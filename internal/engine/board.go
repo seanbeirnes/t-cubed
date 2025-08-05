@@ -1,19 +1,71 @@
 package engine
 
-const (
-    BOARD_FULL = 0x01FF
-    ROW_PATTERN = 0x0007
-    COL_PATTERN = 0x0049
-    DIAG1_PATTERN = 0x0111
-    DIAG2_PATTERN = 0x0054
+import (
+	"fmt"
 )
 
-func GetAvailableMoves(p1board uint16, p2board uint16) uint16 {
-	occupied := p1board | p2board
-	return ^occupied & BOARD_FULL
+type Board struct {
+	P1Board uint16
+	P2Board uint16
+}
+
+func newBoard() *Board {
+	board := &Board{
+		P1Board: 0x0000,
+		P2Board: 0x0000,
+	}
+	return board
+}
+
+func (b *Board) availableMoves() uint16 {
+	return b.P1Board | b.P2Board
+}
+
+// Applies move to the board, takes in 1-9 as position
+func (b *Board) move(playerId uint8, position uint8) (bool, error) {
+	if playerId > 2 || playerId < 1 {
+		return false, fmt.Errorf("Invalid player ID")
+	}
+	if position > 9 || position < 1 {
+		return false, fmt.Errorf("Invalid position")
+	}
+
+	position -= 1
+
+	board := &b.P1Board
+	if playerId == 2 {
+		board = &b.P2Board
+	}
+
+	emptyPositions := b.availableMoves()
+	targetPosition := emptyPositions & (1 << position)
+	if targetPosition != 0 {
+		return false, fmt.Errorf("Space already taken")
+	}
+
+	*board |= uint16(1 << position)
+	return true, nil
 }
 
 // Checks player's board to see if the player won
+func isTerminal(board *Board) uint8 {
+	p1board := board.P1Board
+	p2board := board.P2Board
+
+	if isWinner(p1board) {
+		return TERM_WIN_1
+	}
+	if isWinner(p2board) {
+		return TERM_WIN_2
+	}
+	if p1board | p2board == BOARD_FULL {
+		return TERM_DRAW
+	}
+
+	return TERM_NOT
+}
+
+// Implements the bit-wise logic for checking if a player has won
 func isWinner(board uint16) bool {
 	// 0000 0000 0000 0111 = 0x0007 (1st row)
 	rowPattern := uint16(ROW_PATTERN)
@@ -55,19 +107,4 @@ func isWinner(board uint16) bool {
 	}
 
 	return false
-}
-
-// Returns 1 if player 1 wins, 2 if player 2 wins, 3 if tie, 0 if not terminal
-func IsTerminal(p1board uint16, p2board uint16) uint8 {
-	if isWinner(p1board) {
-		return 1
-	}
-	if isWinner(p2board) {
-		return 2
-	}
-	if p1board | p2board == BOARD_FULL {
-		return 3
-	}
-
-	return 0
 }

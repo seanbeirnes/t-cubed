@@ -1,38 +1,22 @@
 package engine
 
-const (
-	PIECE_X = 'X'
-	PIECE_O = '0'
+import (
+	"t-cubed/internal/util"
 )
 
 type Player struct {
 	Id         uint8
-	Board      uint16
 	Piece      uint8
 }
 
-func NewPlayer(id uint8, piece byte, isComputer bool) *Player {
+func newPlayer(id uint8, piece byte) *Player {
+	util.Assert(id > 0 && id < 3, "Invalid player ID")
+	util.Assert(piece == PIECE_X || piece == PIECE_O, "Invalid piece")
+
 	player := &Player{
 		Id:         id,
-		Board:      0x0000,
 		Piece:      piece,
 	}
 
 	return player
-}
-
-func (p *Player) MakeMove(position uint8) bool {
-	if !p.HasMove(position) {
-		return false
-	}
-    p.Board |= 1 << position
-	return true
-}
-
-func (p *Player) HasMove(position uint8) bool {
-    return p.Board & (1 << position) != 0
-}
-
-func (p *Player) ResetBoard() {
-	p.Board = 0
 }
