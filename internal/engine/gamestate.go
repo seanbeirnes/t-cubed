@@ -1,5 +1,7 @@
 package engine
 
+// Acts as a public interface for the package.
+
 import (
 	"fmt"
 	"t-cubed/internal/util"

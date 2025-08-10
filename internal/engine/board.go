@@ -72,12 +72,12 @@ func isWinner(board uint16) bool {
 	if board & rowPattern == rowPattern {
 		return true
 	}
-	// 0000 0000 0111 0000 = 0x0070 (2nd row) Checked with bit shift
-	if board & rowPattern<<4 == rowPattern<<4 {
+	// 0000 0000 0011 1000 = 0x0038 (2nd row) Checked with bit shift
+	if (board & (rowPattern<<3)) == rowPattern<<3 {
 		return true
 	}
-	// 0000 0111 0000 0000 = 0x0700 (3rd row) Checked with bit shift
-	if board & rowPattern<<8 == rowPattern<<8 {
+	// 0000 0001 1100 0000 = 0x01C0 (3rd row) Checked with bit shift
+	if (board & (rowPattern<<6)) == rowPattern<<6 {
 		return true
 	}
 
@@ -87,11 +87,11 @@ func isWinner(board uint16) bool {
 		return true
 	}
 	// 0000 0000 1001 0010 = 0x0092 (2nd col) Checked with bit shift
-	if board & colPattern<<1 == colPattern<<1 {
+	if (board & (colPattern<<1)) == colPattern<<1 {
 		return true
 	}
 	// 0000 0001 0010 0100 = 0x0124 (3rd col) Checked with bit shift
-	if board & colPattern<<2 == colPattern<<2 {
+	if (board & (colPattern<<2)) == colPattern<<2 {
 		return true
 	}
 
