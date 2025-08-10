@@ -22,11 +22,11 @@ type GameStateOptions struct {
 }
 
 func NewGameState(gameStateOptions *GameStateOptions) (*GameState, error) {
-	if gameStateOptions.Player1Piece != PIECE_X && gameStateOptions.Player1Piece != PIECE_O {
-		return nil, fmt.Errorf("Invalid player 1 piece")
+	if gameStateOptions.Player1Piece != PIECE_X && gameStateOptions.Player2Piece != PIECE_X {
+		return nil, fmt.Errorf("Invalid player pieces")
 	}
-	if gameStateOptions.Player2Piece != PIECE_X && gameStateOptions.Player2Piece != PIECE_O {
-		return nil, fmt.Errorf("Invalid player 2 piece")
+	if gameStateOptions.Player1Piece != PIECE_O && gameStateOptions.Player2Piece != PIECE_O {
+		return nil, fmt.Errorf("Invalid player pieces")
 	}
 	if gameStateOptions.Player1Piece == gameStateOptions.Player2Piece {
 		return nil, fmt.Errorf("Player 1 and player 2 cannot be the same piece")
