@@ -84,7 +84,7 @@ func (g *GameState) Move(position uint8) (bool, error) {
 		return false, nil
 	}
 
-	ok, err := g.Board.move(g.TurnId, position)
+	ok, err := g.Board.Move(g.TurnId, position)
 	if err != nil {
 		return false, err
 	}
@@ -98,7 +98,7 @@ func (g *GameState) Move(position uint8) (bool, error) {
 		g.TurnId = g.Player1.Id
 	}
 
-	g.TerminalState = isTerminal(g.Board)
+	g.TerminalState = IsTerminal(g.Board)
 
 	return true, nil
 }

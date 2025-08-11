@@ -17,12 +17,14 @@ func newBoard() *Board {
 	return board
 }
 
-func (b *Board) availableMoves() uint16 {
-	return b.P1Board | b.P2Board
+// Returns bits set to 1 if the player has a move available
+func (b *Board) AvailableMoves() uint16 {
+	occupied := b.P1Board | b.P2Board
+	return occupied ^ 0x01FF
 }
 
-// Applies move to the board, takes in 1-9 as position
-func (b *Board) move(playerId uint8, position uint8) (bool, error) {
+// Applies Move to the board, takes in 1-9 as position
+func (b *Board) Move(playerId uint8, position uint8) (bool, error) {
 	if playerId > 2 || playerId < 1 {
 		return false, fmt.Errorf("Invalid player ID")
 	}
@@ -37,9 +39,9 @@ func (b *Board) move(playerId uint8, position uint8) (bool, error) {
 		board = &b.P2Board
 	}
 
-	emptyPositions := b.availableMoves()
-	targetPosition := emptyPositions & (1 << position)
-	if targetPosition != 0 {
+	availablePositions := b.AvailableMoves()
+	targetPosition := availablePositions & (1 << position)
+	if targetPosition == 0 {
 		return false, fmt.Errorf("Space already taken")
 	}
 
@@ -48,7 +50,7 @@ func (b *Board) move(playerId uint8, position uint8) (bool, error) {
 }
 
 // Checks player's board to see if the player won
-func isTerminal(board *Board) uint8 {
+func IsTerminal(board *Board) uint8 {
 	p1board := board.P1Board
 	p2board := board.P2Board
 

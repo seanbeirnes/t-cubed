@@ -11,51 +11,51 @@ func TestIsTerminal(t *testing.T) {
 	// Test horizontal wins
 	board.P1Board = 0x0007
 	board.P2Board = 0x0000
-	terminalState := isTerminal(board)
+	terminalState := IsTerminal(board)
 	if terminalState != TERM_WIN_1 {
 		t.Errorf("Terminal state is not TERM_WIN_1")
 	}
 
 	board.P1Board = 0x0038
-	terminalState = isTerminal(board)
+	terminalState = IsTerminal(board)
 	if terminalState != TERM_WIN_1 {
 		t.Errorf("Terminal state is not TERM_WIN_1")
 	}
 
 	board.P1Board = 0x01C0
-	terminalState = isTerminal(board)
+	terminalState = IsTerminal(board)
 	if terminalState != TERM_WIN_1 {
 		t.Errorf("Terminal state is not TERM_WIN_1")
 	}
 
 	// Test vertical wins
 	board.P1Board = 0x0049
-	terminalState = isTerminal(board)
+	terminalState = IsTerminal(board)
 	if terminalState != TERM_WIN_1 {
 		t.Errorf("Terminal state is not TERM_WIN_1")
 	}
 
 	board.P1Board = 0x0092
-	terminalState = isTerminal(board)
+	terminalState = IsTerminal(board)
 	if terminalState != TERM_WIN_1 {
 		t.Errorf("Terminal state is not TERM_WIN_1")
 	}
 
 	board.P1Board = 0x0124
-	terminalState = isTerminal(board)
+	terminalState = IsTerminal(board)
 	if terminalState != TERM_WIN_1 {
 		t.Errorf("Terminal state is not TERM_WIN_1")
 	}
 
 	// Test diagonal wins
 	board.P1Board = 0x0111
-	terminalState = isTerminal(board)
+	terminalState = IsTerminal(board)
 	if terminalState != TERM_WIN_1 {
 		t.Errorf("Terminal state is not TERM_WIN_1")
 	}
 
 	board.P1Board = 0x0054
-	terminalState = isTerminal(board)
+	terminalState = IsTerminal(board)
 	if terminalState != TERM_WIN_1 {
 		t.Errorf("Terminal state is not TERM_WIN_1")
 	}
@@ -63,7 +63,7 @@ func TestIsTerminal(t *testing.T) {
 	// Test draw
 	board.P1Board = 0x009D
 	board.P2Board = 0x0162
-	terminalState = isTerminal(board)
+	terminalState = IsTerminal(board)
 	if terminalState != TERM_DRAW {
 		t.Errorf("Terminal state is not TERM_DRAW")
 	}
@@ -71,7 +71,7 @@ func TestIsTerminal(t *testing.T) {
 	// Test not terminal
 	board.P1Board = 0x0000
 	board.P2Board = 0x0000
-	terminalState = isTerminal(board)
+	terminalState = IsTerminal(board)
 	if terminalState != TERM_NOT {
 		t.Errorf("Terminal state is not TERM_NOT")
 	}

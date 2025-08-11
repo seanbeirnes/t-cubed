@@ -1,11 +1,12 @@
 package game
 
 import (
-	"fmt"
-	"strconv"
-	"os"
 	"bufio"
+	"fmt"
+	"os"
+	"strconv"
 
+	"t-cubed/internal/ai"
 	"t-cubed/internal/engine"
 )
 
@@ -24,22 +25,34 @@ func Main() {
 	scnr := bufio.NewScanner(os.Stdin)
 
 	for {
-		fmt.Printf("[PLAYER %d] Enter your move (1-9): \n", gameState.GetCurrentPlayerId())
-		scnr.Scan()
-		position, err := strconv.Atoi(scnr.Text())
-		if err != nil {
-			fmt.Println("Invalid input")
-			continue
+		if gameState.GetCurrentPlayerId() == 2 {
+			bestMove := ai.BestMove(gameState.Board)
+			ok, err := gameState.Move(bestMove)
+			if err != nil {
+				panic(err)
+			}
+			if !ok {
+				panic("Invalid move")
+			}
+		} else {
+			fmt.Printf("[PLAYER %d] Enter your move (1-9): \n", gameState.GetCurrentPlayerId())
+			scnr.Scan()
+			position, err := strconv.Atoi(scnr.Text())
+			if err != nil {
+				fmt.Println("Invalid input")
+				continue
+			}
+			ok, err := gameState.Move(uint8(position))
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			if !ok {
+				fmt.Println("Invalid move")
+				continue
+			}
 		}
-		ok, err := gameState.Move(uint8(position))
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		if !ok {
-			fmt.Println("Invalid move")
-			continue
-		}
+
 
 		boardString := gameState.GetBoardAsString()
 		fmt.Println()
