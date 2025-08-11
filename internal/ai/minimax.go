@@ -7,6 +7,10 @@ import (
 	"t-cubed/internal/util"
 )
 
+/*
+Returns the best move for the AI player.
+Assumes that the AI player is Player 2 and the human player is Player 1.
+*/
 func BestMove(gameBoard *engine.Board) uint8 {
 	if engine.IsTerminal(gameBoard) != engine.TERM_NOT {
 		return 0
