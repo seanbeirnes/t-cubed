@@ -33,11 +33,14 @@ func NewNetwork(neurons ...int) (*network, error) {
 
 	}
 
-	return &network{layers: layers}, nil
+	n := &network{layers: layers}
+	n.randomizeWeights()
+
+	return n, nil
 }
 
 // Randomizes the weights of the network.
-func (n *network) RandomizeWeights() {
+func (n *network) randomizeWeights() {
 	for _, layer:= range n.layers {
 		for i := 0; i < layer.input; i++ {
 			for j := 0; j < layer.output; j++ {
@@ -45,6 +48,16 @@ func (n *network) RandomizeWeights() {
 			}
 		}
 	}
+}
+
+// Loads a FFNN config from a JSON file
+func LoadNetwork(filename string) (*network, error) {
+	return nil, nil
+}
+
+// Saves a FFNN config to a JSON file
+func (n *network) Save(filename string) error {
+	return nil
 }
 
 // Forward propagates the input through the network and returns the output.
