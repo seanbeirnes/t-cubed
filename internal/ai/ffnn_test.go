@@ -41,7 +41,7 @@ func TestNetworkForward_TwoLayers_NoReLUOnLast(t *testing.T) {
 	// Input
 	x := []float64{1, 2, 3}
 	// Forward
-	probs, err := n.Forward(x)
+	probs, err := n.Forward(x, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,5 +207,70 @@ func TestSaveAndLoadNetwork(t *testing.T) {
 	}
 	if len(raw.Layers) != len(n.Layers) {
 		t.Fatalf("saved json Layers mismatch: expected %d got %d", len(n.Layers), len(raw.Layers))
+	}
+}
+
+func TestForward_TraceRecording(t *testing.T) {
+	// Build a deterministic network: 2 inputs -> 2 hidden -> 2 outputs
+	n := &network{
+		Layers: []*layer{
+			{
+				Input:   2,
+				Output:  2,
+				Weights: [][]float64{{1, 0}, {0, 1}},
+				Biases:  []float64{0, 0},
+			},
+			{
+				Input:   2,
+				Output:  2,
+				Weights: [][]float64{{1, 0}, {0, 1}},
+				Biases:  []float64{0, 0},
+			},
+		},
+	}
+
+	// Provide a simple input
+	in := []float64{1.5, -2.0}
+
+	trace := &ForwardTrace{}
+	out, err := n.Forward(in, trace)
+	if err != nil {
+		t.Fatalf("Forward returned error: %v", err)
+	}
+
+	// Because final layer uses identity and softmax is applied to output
+	// compute expected final softmax
+	// After first layer with ReLU: reLU([1.5, -2.0]) -> [1.5, 0]
+	// After second (last) layer identity: [1.5, 0]
+	expectedLayer0 := []float64{1.5, -2.0}   // input (copied as-is)
+	expectedLayer1 := []float64{1.5, 0.0}    // after first layer (ReLU)
+	expectedLayer2 := []float64{1.5, 0.0}    // after second layer before softmax
+
+	// verify trace length (input + number of layers)
+	if len(trace.LayerOutputs) != len(n.Layers)+1 {
+		t.Fatalf("unexpected trace length: got %d want %d", len(trace.LayerOutputs), len(n.Layers)+1)
+	}
+
+	// compare recorded values
+	if !reflect.DeepEqual(trace.LayerOutputs[0], expectedLayer0) {
+		t.Fatalf("layer 0 mismatch: got %v want %v", trace.LayerOutputs[0], expectedLayer0)
+	}
+	if !reflect.DeepEqual(trace.LayerOutputs[1], expectedLayer1) {
+		t.Fatalf("layer 1 mismatch: got %v want %v", trace.LayerOutputs[1], expectedLayer1)
+	}
+	if !reflect.DeepEqual(trace.LayerOutputs[2], expectedLayer2) {
+		t.Fatalf("layer 2 mismatch: got %v want %v", trace.LayerOutputs[2], expectedLayer2)
+	}
+
+	// Validate the returned softmaxed output sums to 1 and matches softmax(expectedLayer2)
+	sum := 0.0
+	for _, v := range out {
+		if v < 0 {
+			t.Fatalf("softmax output negative: %v", out)
+		}
+		sum += v
+	}
+	if (sum < 0.9999) || (sum > 1.0001) {
+		t.Fatalf("softmax outputs do not sum to ~1: sum=%v out=%v", sum, out)
 	}
 }
