@@ -1,19 +1,23 @@
 package ai
 
 import (
+	"encoding/json"
 	"errors"
 	"math"
 	"math/rand"
+	"os"
+	"path/filepath"
 )
 
 type layer struct {
-	input, output int
-	weights       [][]float64
-	biases        []float64
+	Input   int         `json:"input"`
+	Output  int         `json:"output"`
+	Weights [][]float64 `json:"weights"`
+	Biases  []float64   `json:"biases"`
 }
 
 type network struct {
-	layers []*layer
+	Layers []*layer `json:"layers"`
 }
 
 // Creates a new feed-forward neural network where x1, x2, ..., xn are the neuron counts for each layer.
@@ -24,7 +28,7 @@ func NewNetwork(neurons ...int) (*network, error) {
 	}
 	layers := make([]*layer, len(neurons)-1)
 
-	for i := 0; i < len(neurons) - 1; i++ {
+	for i := 0; i < len(neurons)-1; i++ {
 		in, out := neurons[i], neurons[i+1]
 		if in == 0 || out == 0 {
 			return nil, errors.New("Neurons cannot be 0")
@@ -33,7 +37,7 @@ func NewNetwork(neurons ...int) (*network, error) {
 
 	}
 
-	n := &network{layers: layers}
+	n := &network{Layers: layers}
 	n.randomizeWeights()
 
 	return n, nil
@@ -41,32 +45,46 @@ func NewNetwork(neurons ...int) (*network, error) {
 
 // Randomizes the weights of the network.
 func (n *network) randomizeWeights() {
-	for _, layer:= range n.layers {
-		for i := 0; i < layer.input; i++ {
-			for j := 0; j < layer.output; j++ {
-				layer.weights[i][j] = rand.Float64() 
+	for _, layer := range n.Layers {
+		for i := 0; i < layer.Input; i++ {
+			for j := 0; j < layer.Output; j++ {
+				layer.Weights[i][j] = rand.Float64()
 			}
 		}
 	}
 }
 
 // Loads a FFNN config from a JSON file
-func LoadNetwork(filename string) (*network, error) {
-	return nil, nil
+func LoadNetwork(fpath string) (*network, error) {
+	fpath = filepath.Clean(fpath)
+	data, err := os.ReadFile(fpath)
+	if err != nil {
+		return nil, err
+	}
+	var network network
+	if err := json.Unmarshal(data, &network); err != nil {
+		return nil, err
+	}
+	return &network, nil
 }
 
 // Saves a FFNN config to a JSON file
-func (n *network) Save(filename string) error {
-	return nil
+func SaveNetwork(fpath string, n *network) error {
+	fpath = filepath.Clean(fpath)
+	data, err := json.Marshal(n)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(fpath, data, 0644)
 }
 
 // Forward propagates the input through the network and returns the output.
 func (n *network) Forward(x []float64) ([]float64, error) {
 	var err error
 	out := x
-	for i, l := range n.layers {
+	for i, l := range n.Layers {
 		act := reLU
-		if i == len(n.layers)-1 {
+		if i == len(n.Layers)-1 {
 			act = identity // last layer emits logits
 		}
 		out, err = l.feedForward(out, act)
@@ -79,35 +97,34 @@ func (n *network) Forward(x []float64) ([]float64, error) {
 
 func newLayer(input, output int) *layer {
 	l := &layer{
-		input: input,
-		output: output,
-		weights: make([][]float64, input),
-		biases: make([]float64, output),
+		Input:   input,
+		Output:  output,
+		Weights: make([][]float64, input),
+		Biases:  make([]float64, output),
 	}
-	for i := range l.weights {
-		l.weights[i] = make([]float64, output)
+	for i := range l.Weights {
+		l.Weights[i] = make([]float64, output)
 	}
 	return l
 }
 
 // Feed forwards the input through the network and returns the output.
 func (l *layer) feedForward(input []float64, activationFunc func(float64) float64) ([]float64, error) {
-	if len(input) != l.input {
+	if len(input) != l.Input {
 		return nil, errors.New("Input length does not match layer input length")
 	}
 
-	output := make([]float64, l.output)
-	for j := 0; j < l.output; j++ {
-		sum := l.biases[j]
-		for i := 0; i < l.input; i++ {
-			sum += l.weights[i][j] * input[i]
+	output := make([]float64, l.Output)
+	for j := 0; j < l.Output; j++ {
+		sum := l.Biases[j]
+		for i := 0; i < l.Input; i++ {
+			sum += l.Weights[i][j] * input[i]
 		}
 		output[j] = activationFunc(sum)
 	}
 
 	return output, nil
 }
-
 
 // Activation function for the network.
 func reLU(x float64) float64 {
