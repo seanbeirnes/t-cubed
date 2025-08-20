@@ -20,6 +20,10 @@ type network struct {
 	Layers []*layer `json:"layers"`
 }
 
+type ForwardTrace struct {
+	LayerOutputs [][]float64 `json:"layerOutputs"`
+}
+
 // Creates a new feed-forward neural network where x1, x2, ..., xn are the neuron counts for each layer.
 // The first layer is the input layer, and the last layer is the output layer.
 func NewNetwork(neurons ...int) (*network, error) {
@@ -79,20 +83,38 @@ func SaveNetwork(fpath string, n *network) error {
 }
 
 // Forward propagates the input through the network and returns the output.
-func (n *network) Forward(x []float64) ([]float64, error) {
+func (n *network) Forward(x []float64, trace *ForwardTrace) ([]float64, error) {
 	var err error
 	out := x
+	record := trace != nil
+
+	// If recording, initialize to have length of first + hidden + output layers
+	if record {
+		trace.LayerOutputs = make([][]float64, len(n.Layers) + 1)
+		trace.LayerOutputs[0] = copySlice(x)
+	}
+
 	for i, l := range n.Layers {
 		act := reLU
 		if i == len(n.Layers)-1 {
 			act = identity // last layer emits logits
 		}
 		out, err = l.feedForward(out, act)
+		if record {
+			trace.LayerOutputs[i+1] = copySlice(out)
+		}
 		if err != nil {
 			return nil, err
 		}
 	}
 	return softmax(out), nil
+}
+
+// copySlice returns a copy of s.
+func copySlice(s []float64) []float64 {
+	c := make([]float64, len(s))
+	copy(c, s)
+	return c
 }
 
 func newLayer(input, output int) *layer {
