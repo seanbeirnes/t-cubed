@@ -24,6 +24,57 @@ func TestLayerForward_SimpleOnes(t *testing.T) {
 	}
 }
 
+func TestLayerForward_WithCache(t *testing.T) {
+	// Build a simple layer: 2 inputs -> 3 outputs
+	l := &layer{
+		Input:   2,
+		Output:  3,
+		Weights: [][]float64{{1, -1, 2}, {0.5, 0.5, -1}},
+		Biases:  []float64{0.1, -0.2, 0.0},
+	}
+
+	input := []float64{2.0, -1.0}
+	cache := &layerCache{
+		As: make([]float64, l.Output),
+		Zs: make([]float64, l.Output),
+	}
+
+	out, err := l.feedForward(input, reLU, cache)
+	if err != nil {
+		t.Fatalf("feedForward returned error: %v", err)
+	}
+
+	// Manually compute expected pre-activations (z) and post-activations (a)
+	expZ := make([]float64, 3)
+	expZ[0] = l.Biases[0] + l.Weights[0][0]*input[0] + l.Weights[1][0]*input[1] // 0.1 + 1*2 + 0.5*(-1) = 0.6
+	expZ[1] = l.Biases[1] + l.Weights[0][1]*input[0] + l.Weights[1][1]*input[1] // -0.2 + (-1)*2 + 0.5*(-1) = -2.7
+	expZ[2] = l.Biases[2] + l.Weights[0][2]*input[0] + l.Weights[1][2]*input[1] // 0 + 2*2 + (-1)*(-1) = 5
+
+	expA := make([]float64, 3)
+	for i := 0; i < 3; i++ {
+		if expZ[i] > 0 {
+			expA[i] = expZ[i]
+		} else {
+			expA[i] = 0
+		}
+	}
+
+	// Compare outputs, cached Zs and As
+	eps := 1e-9
+	for i := 0; i < l.Output; i++ {
+		if !almostEqual(out[i], expA[i], eps) {
+			t.Fatalf("output[%d] mismatch: got %v want %v", i, out[i], expA[i])
+		}
+		if !almostEqual(cache.Zs[i], expZ[i], eps) {
+			t.Fatalf("cache.Zs[%d] mismatch: got %v want %v", i, cache.Zs[i], expZ[i])
+		}
+		if !almostEqual(cache.As[i], expA[i], eps) {
+			t.Fatalf("cache.As[%d] mismatch: got %v want %v", i, cache.As[i], expA[i])
+		}
+	}
+
+}
+
 func TestNetworkForward_TwoLayers_NoReLUOnLast(t *testing.T) {
 	n, err := NewNetwork(3, 2, 2) // 3 -> 2 -> 2
 	if err != nil {
@@ -196,10 +247,10 @@ func TestSaveAndLoadNetwork(t *testing.T) {
 	}
 	var raw struct {
 		Layers []struct {
-			Input   int           `json:"Input"`
-			Output  int           `json:"Output"`
-			Weights [][]float64   `json:"Weights"`
-			Biases  []float64     `json:"Biases"`
+			Input   int         `json:"Input"`
+			Output  int         `json:"Output"`
+			Weights [][]float64 `json:"Weights"`
+			Biases  []float64   `json:"Biases"`
 		} `json:"Layers"`
 	}
 	if err := json.Unmarshal(b, &raw); err != nil {
@@ -242,9 +293,9 @@ func TestForward_TraceRecording(t *testing.T) {
 	// compute expected final softmax
 	// After first layer with ReLU: reLU([1.5, -2.0]) -> [1.5, 0]
 	// After second (last) layer identity: [1.5, 0]
-	expectedLayer0 := []float64{1.5, -2.0}   // input (copied as-is)
-	expectedLayer1 := []float64{1.5, 0.0}    // after first layer (ReLU)
-	expectedLayer2 := []float64{1.5, 0.0}    // after second layer before softmax
+	expectedLayer0 := []float64{1.5, -2.0} // input (copied as-is)
+	expectedLayer1 := []float64{1.5, 0.0}  // after first layer (ReLU)
+	expectedLayer2 := []float64{1.5, 0.0}  // after second layer before softmax
 
 	// verify trace length (input + number of layers)
 	if len(trace.LayerOutputs) != len(n.Layers)+1 {
