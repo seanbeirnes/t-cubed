@@ -16,6 +16,12 @@ type layer struct {
 	Biases  []float64   `json:"biases"`
 }
 
+// Used for backpropagation to catch post-activation (a) and pre-activation (z) values
+type layerCache struct {
+	As []float64
+	Zs []float64
+}
+
 type network struct {
 	Layers []*layer `json:"layers"`
 }
@@ -90,7 +96,7 @@ func (n *network) Forward(x []float64, trace *ForwardTrace) ([]float64, error) {
 
 	// If recording, initialize to have length of first + hidden + output layers
 	if record {
-		trace.LayerOutputs = make([][]float64, len(n.Layers) + 1)
+		trace.LayerOutputs = make([][]float64, len(n.Layers)+1)
 		trace.LayerOutputs[0] = copySlice(x)
 	}
 
@@ -99,7 +105,7 @@ func (n *network) Forward(x []float64, trace *ForwardTrace) ([]float64, error) {
 		if i == len(n.Layers)-1 {
 			act = identity // last layer emits logits
 		}
-		out, err = l.feedForward(out, act)
+		out, err = l.feedForward(out, act, nil)
 		if record {
 			trace.LayerOutputs[i+1] = copySlice(out)
 		}
@@ -131,10 +137,12 @@ func newLayer(input, output int) *layer {
 }
 
 // Feed forwards the input through the network and returns the output.
-func (l *layer) feedForward(input []float64, activationFunc func(float64) float64) ([]float64, error) {
+func (l *layer) feedForward(input []float64, activationFunc func(float64) float64, cache *layerCache) ([]float64, error) {
 	if len(input) != l.Input {
 		return nil, errors.New("Input length does not match layer input length")
 	}
+
+	doCache := cache != nil
 
 	output := make([]float64, l.Output)
 	for j := 0; j < l.Output; j++ {
@@ -142,7 +150,17 @@ func (l *layer) feedForward(input []float64, activationFunc func(float64) float6
 		for i := 0; i < l.Input; i++ {
 			sum += l.Weights[i][j] * input[i]
 		}
+		// Cache pre-activation values
+		if doCache {
+			cache.Zs[j] = sum
+		}
+
 		output[j] = activationFunc(sum)
+
+		// Cache post-activation values
+		if doCache {
+			cache.As[j] = output[j]
+		}
 	}
 
 	return output, nil

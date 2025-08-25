@@ -15,7 +15,7 @@ func TestLayerForward_SimpleOnes(t *testing.T) {
 	// Weights: 3x2 of ones
 	l.Weights = [][]float64{{1, 1}, {1, 1}, {1, 1}}
 	l.Biases = []float64{0, 0}
-	out, err := l.feedForward([]float64{1, 2, 3}, identity)
+	out, err := l.feedForward([]float64{1, 2, 3}, identity, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
