@@ -1,5 +1,18 @@
 package ai
 
+type TrainingExample struct {
+	Input  []float64 `json:"input"`
+	Target []float64 `json:"target"`
+}
+
+type TrainingConfig struct {
+	LearningRate  float64 `json:"learningRate"`
+	CostThreshold float64 `json:"costThreshold"`
+	Epochs        int     `json:"epochs"`
+	BatchSize     int     `json:"batchSize"`
+	ExamplesDir   string  `json:"examplesDir"`
+}
+
 type trainingNetwork struct {
 	network *network
 
@@ -10,11 +23,6 @@ type trainingNetwork struct {
 
 	learningRate  float64
 	costThreshold float64
-}
-
-type TrainingExample struct {
-	Input  []float64 `json:"input"`
-	Target []float64 `json:"target"`
 }
 
 func newTrainingNetwork(network *network, learningRate float64, costThreshold float64) *trainingNetwork {
@@ -62,11 +70,27 @@ func newTrainingNetwork(network *network, learningRate float64, costThreshold fl
 	return n
 }
 
-func TrainNetwork(network *network, learningRate float64, costThreshold float64) (*network, error) {
-	_ = newTrainingNetwork(network, learningRate, costThreshold)
-	return network, nil
+func (n *network) Train(trainingConfig *TrainingConfig) error {
+	_ = newTrainingNetwork(n, trainingConfig.LearningRate, trainingConfig.CostThreshold)
+	return nil
 }
 
-func (n *trainingNetwork) forwardWithCache(input []float64) {
+func (tn *trainingNetwork) forwardWithCache(x []float64) error {
+	var err error
+	out := x
 
+	for i, layer := range tn.network.Layers {
+		act := reLU
+		if i == len(tn.network.Layers)-1 {
+			act = identity // last layer emits logits
+		}
+		out, err = layer.feedForward(out, act, tn.layerCaches[i])
+		if err != nil {
+			return err
+		}
+	}
+	// Update last layer cache with softmax output
+	out = softmax(out)
+	tn.layerCaches[len(tn.network.Layers)-1].As = copySlice(out)
+	return nil
 }

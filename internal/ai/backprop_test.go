@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -142,4 +143,62 @@ func TestNewTrainingNetwork_EdgeCases(t *testing.T) {
 	if tn.costThreshold != 0.5 {
 		t.Errorf("costThreshold = %v, want 0.5", tn.costThreshold)
 	}
+}
+
+func TestTrainingNetwork_ForwardWithCache_FillsCaches(t *testing.T) {
+	// Deterministic small network: 2 -> 2 -> 2
+	n, err := NewNetwork(2, 2, 2)
+	if err != nil {
+		t.Fatalf("NewNetwork failed: %v", err)
+	}
+	// Overwrite weights/biases for determinism
+	n.Layers[0].Weights = [][]float64{{1, 0}, {0, 1}} // identity mapping
+	n.Layers[0].Biases = []float64{0, 0}
+	n.Layers[1].Weights = [][]float64{{1, 2}, {3, 4}}
+	n.Layers[1].Biases = []float64{0, 0}
+
+	tn := newTrainingNetwork(n, 0.1, 0.01)
+	input := []float64{2, -1}
+
+	if err := tn.forwardWithCache(input); err != nil {
+		t.Fatalf("forwardWithCache error: %v", err)
+	}
+
+	// Compute expected forward pass manually to compare caches.
+	// Layer 0 (hidden, ReLU): z0 = W0^T x + b0 => [2, -1]; a0 = ReLU(z0) => [2, 0]
+	expectedZ0 := []float64{2, -1}
+	expectedA0 := []float64{2, 0}
+	if !reflect.DeepEqual(tn.layerCaches[0].Zs, expectedZ0) {
+		t.Errorf("layer 0 Zs = %v, want %v", tn.layerCaches[0].Zs, expectedZ0)
+	}
+	if !reflect.DeepEqual(tn.layerCaches[0].As, expectedA0) {
+		t.Errorf("layer 0 As = %v, want %v", tn.layerCaches[0].As, expectedA0)
+	}
+
+	// Layer 1 (output, identity then softmax):
+	// z1 = W1^T a0 + b1 = [1*2+3*0, 2*2+4*0] = [2, 4]
+	// softmax([2,4])
+	z1 := []float64{2, 4}
+	// After forwardWithCache, tn.layerCaches[1].As should equal softmax(z1)
+	expectedProbs := softmax(z1)
+	if !almostEqualSlices(tn.layerCaches[1].As, expectedProbs, 1e-9) {
+		t.Errorf("layer 1 As (probs) = %v, want %v", tn.layerCaches[1].As, expectedProbs)
+	}
+}
+
+// Helpers for stable float comparisons
+func almostEqualSlices(a, b []float64, eps float64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		d := a[i] - b[i]
+		if d < 0 {
+			d = -d
+		}
+		if d > eps {
+			return false
+		}
+	}
+	return true
 }
