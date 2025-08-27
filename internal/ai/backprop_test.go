@@ -1,6 +1,10 @@
 package ai
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -186,17 +190,114 @@ func TestTrainingNetwork_ForwardWithCache_FillsCaches(t *testing.T) {
 	}
 }
 
-// Helpers for stable float comparisons
+func TestNetwork_Train_WithSampleData(t *testing.T) {
+	// Create a small network for testing
+	n, err := NewNetwork(2, 3, 2)
+	if err != nil {
+		t.Fatalf("NewNetwork failed: %v", err)
+	}
+
+	// Create temporary directory for training examples
+	tempDir := t.TempDir()
+
+	// Create sample training examples
+	examples := []trainingExample{
+		{Input: []float64{0.0, 0.0}, Target: []float64{1.0, 0.0}}, // XOR: 0,0 -> 1,0
+		{Input: []float64{0.0, 1.0}, Target: []float64{0.0, 1.0}}, // XOR: 0,1 -> 0,1
+		{Input: []float64{1.0, 0.0}, Target: []float64{0.0, 1.0}}, // XOR: 1,0 -> 0,1
+		{Input: []float64{1.0, 1.0}, Target: []float64{1.0, 0.0}}, // XOR: 1,1 -> 1,0
+	}
+
+	// Write training examples to JSON files
+	for i, example := range examples {
+		data, err := json.Marshal(example)
+		if err != nil {
+			t.Fatalf("Failed to marshal example %d: %v", i, err)
+		}
+
+		filename := filepath.Join(tempDir, fmt.Sprintf("example_%d.json", i))
+		if err := os.WriteFile(filename, data, 0644); err != nil {
+			t.Fatalf("Failed to write example file %d: %v", i, err)
+		}
+	}
+
+	// Configure training
+	config := &TrainingConfig{
+		LearningRate:  0.1,
+		CostThreshold: 0.01,
+		Epochs:        5,
+		BatchSize:     2,
+		ExamplesDir:   tempDir,
+	}
+
+	// Store initial weights to verify they change
+	initialWeights := make([][][]float64, len(n.Layers))
+	for i, layer := range n.Layers {
+		initialWeights[i] = make([][]float64, len(layer.Weights))
+		for j := range layer.Weights {
+			initialWeights[i][j] = make([]float64, len(layer.Weights[j]))
+			copy(initialWeights[i][j], layer.Weights[j])
+		}
+	}
+
+	// Run training
+	err = n.Train(config)
+	if err != nil {
+		t.Fatalf("Training failed: %v", err)
+	}
+
+	// Verify weights have changed (learning occurred)
+	weightsChanged := false
+	for i, layer := range n.Layers {
+		for j := range layer.Weights {
+			for k := range layer.Weights[j] {
+				if !almostEqual(layer.Weights[j][k], initialWeights[i][j][k], 1e-10) {
+					weightsChanged = true
+					break
+				}
+			}
+			if weightsChanged {
+				break
+			}
+		}
+		if weightsChanged {
+			break
+		}
+	}
+
+	if !weightsChanged {
+		t.Errorf("Weights did not change during training - learning may not be working")
+	}
+}
+
+func TestNetwork_Train_ErrorHandling(t *testing.T) {
+	n, err := NewNetwork(2, 2)
+	if err != nil {
+		t.Fatalf("NewNetwork failed: %v", err)
+	}
+
+	// Test with non-existent directory
+	config := &TrainingConfig{
+		LearningRate:  0.1,
+		CostThreshold: 0.01,
+		Epochs:        1,
+		BatchSize:     1,
+		ExamplesDir:   "/non/existent/directory",
+	}
+
+	err = n.Train(config)
+	if err == nil {
+		t.Errorf("Expected error for non-existent directory, got nil")
+	}
+}
+
+// Helper functions
 func almostEqualSlices(a, b []float64, eps float64) bool {
 	if len(a) != len(b) {
 		return false
 	}
 	for i := range a {
-		d := a[i] - b[i]
-		if d < 0 {
-			d = -d
-		}
-		if d > eps {
+		if !almostEqual(a[i], b[i], eps) {
 			return false
 		}
 	}

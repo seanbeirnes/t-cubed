@@ -291,12 +291,15 @@ func (tn *trainingNetwork) resetCaches() {
 func (tn *trainingNetwork) updateWeights(learningRate float64, batchSize int) {
 	scale := learningRate / float64(batchSize)
 
-	// Update weights and biases
 	for i := range tn.network.Layers {
+		// Update weights
 		for j := range tn.network.Layers[i].Weights {
 			for k := range tn.network.Layers[i].Weights[j] {
 				tn.network.Layers[i].Weights[j][k] -= scale * tn.wGradients[i][j][k]
 			}
+		}
+		// Update biases
+		for j := range tn.network.Layers[i].Biases {
 			tn.network.Layers[i].Biases[j] -= scale * tn.bGradients[i][j]
 		}
 	}
