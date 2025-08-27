@@ -16,9 +16,7 @@ func TestNewTrainingNetwork_DetailedShapes(t *testing.T) {
 		t.Fatalf("NewNetwork failed: %v", err)
 	}
 
-	lr := 0.01
-	ct := 0.001
-	tn := newTrainingNetwork(n, lr, ct)
+	tn := newTrainingNetwork(n)
 
 	if tn == nil {
 		t.Fatalf("newTrainingNetwork returned nil")
@@ -27,12 +25,6 @@ func TestNewTrainingNetwork_DetailedShapes(t *testing.T) {
 	// Test basic properties
 	if tn.network != n {
 		t.Errorf("network pointer not preserved")
-	}
-	if tn.learningRate != lr {
-		t.Errorf("learningRate = %v, want %v", tn.learningRate, lr)
-	}
-	if tn.costThreshold != ct {
-		t.Errorf("costThreshold = %v, want %v", tn.costThreshold, ct)
 	}
 
 	// Test slice lengths match number of layers
@@ -93,7 +85,7 @@ func TestNewTrainingNetwork_ZeroInitialization(t *testing.T) {
 		t.Fatalf("NewNetwork failed: %v", err)
 	}
 
-	tn := newTrainingNetwork(n, 0.1, 0.01)
+	tn := newTrainingNetwork(n)
 
 	// Verify all gradient arrays are zero-initialized
 	for i := range tn.wGradients {
@@ -130,7 +122,7 @@ func TestNewTrainingNetwork_EdgeCases(t *testing.T) {
 		t.Fatalf("NewNetwork failed: %v", err)
 	}
 
-	tn := newTrainingNetwork(n, 1.0, 0.5)
+	tn := newTrainingNetwork(n)
 	if tn == nil {
 		t.Fatalf("newTrainingNetwork returned nil for minimal network")
 	}
@@ -138,14 +130,6 @@ func TestNewTrainingNetwork_EdgeCases(t *testing.T) {
 	// Should have exactly 1 layer
 	if len(tn.layerCaches) != 1 {
 		t.Errorf("Expected 1 layer, got %d", len(tn.layerCaches))
-	}
-
-	// Test parameters are set correctly
-	if tn.learningRate != 1.0 {
-		t.Errorf("learningRate = %v, want 1.0", tn.learningRate)
-	}
-	if tn.costThreshold != 0.5 {
-		t.Errorf("costThreshold = %v, want 0.5", tn.costThreshold)
 	}
 }
 
@@ -161,7 +145,7 @@ func TestTrainingNetwork_ForwardWithCache_FillsCaches(t *testing.T) {
 	n.Layers[1].Weights = [][]float64{{1, 2}, {3, 4}}
 	n.Layers[1].Biases = []float64{0, 0}
 
-	tn := newTrainingNetwork(n, 0.1, 0.01)
+	tn := newTrainingNetwork(n)
 	input := []float64{2, -1}
 
 	if err := tn.forwardWithCache(input); err != nil {
