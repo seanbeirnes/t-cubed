@@ -227,7 +227,6 @@ func (tn *trainingNetwork) backward(trainingExample *trainingExample) error {
 	for i := lli - 1; i >= 0; i-- {
 		currentLayerCache := tn.layerCaches[i]
 		currentLayerDeltas := tn.deltaCache[i]
-		currentLayerWeights := tn.network.Layers[i].Weights
 		nextLayerDeltas := tn.deltaCache[i+1]
 		nextLayerWeights := tn.network.Layers[i+1].Weights
 
@@ -249,7 +248,7 @@ func (tn *trainingNetwork) backward(trainingExample *trainingExample) error {
 
 		// Compute gradients for each neuron in current layer
 		for j := range currentLayerDeltas {
-			for k := range currentLayerWeights[j] {
+			for k := range previousLayerAs {
 				tn.wGradients[i][k][j] += currentLayerDeltas[j] * previousLayerAs[k]
 			}
 			tn.bGradients[i][j] += currentLayerDeltas[j]
