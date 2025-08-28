@@ -19,7 +19,7 @@ type TrainingConfig struct {
 	ExamplesDir   string  `json:"examplesDir"`
 }
 
-type trainingExample struct {
+type TrainingExample struct {
 	Input  []float64 `json:"input"`
 	Target []float64 `json:"target"`
 }
@@ -68,7 +68,7 @@ func (n *network) Train(trainingConfig *TrainingConfig) error {
 			if err != nil {
 				return err
 			}
-			var example trainingExample
+			var example TrainingExample
 			if err := json.Unmarshal(data, &example); err != nil {
 				return err
 			}
@@ -204,7 +204,7 @@ func (tn *trainingNetwork) forwardWithCache(x []float64) error {
 
 // Backpropagate the error from the last layer to the first layer.
 // Requires forwardWithCache to have been called first.
-func (tn *trainingNetwork) backward(trainingExample *trainingExample) error {
+func (tn *trainingNetwork) backward(trainingExample *TrainingExample) error {
 	if !tn.forwardCalled {
 		return errors.New("forwardWithCache() must be called before backward()")
 	}

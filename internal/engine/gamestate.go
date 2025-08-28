@@ -67,6 +67,24 @@ func (g *GameState) GetBoardAsBytes() []byte {
 	return boardAsBytes
 }
 
+// Returns the board as an array of floats for use in neural networks
+// The first 9 elements are 1 for Player 1's pieces or 0, the next 9 are 1 for Player 2's pieces or 0
+func (g *GameState) GetBoardAsNetworkInput() []float64 {
+	boardAsBytes := g.GetBoardAsBytes()
+	input := make([]float64, 18)
+	for i, b := range boardAsBytes {
+		switch b {
+			case g.Player1.Piece:
+				input[i] = 1
+			case g.Player2.Piece:
+				input[i+9] = 1
+			default:
+				input[i] = 0
+		}
+	}
+	return input
+}
+
 func (g *GameState) GetBoardAsString() string {
 	return string(g.GetBoardAsBytes())
 }
