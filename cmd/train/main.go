@@ -174,8 +174,39 @@ func createExample() ai.TrainingExample {
 }
 
 func trainNeuralNetwork() {
+	savedName := "weights.json"
+	scnr := bufio.NewScanner(os.Stdin)
+
+	fmt.Print("Enter input directory: ")
+	scnr.Scan()
+	outDir := filepath.Clean(scnr.Text())
+
+	fmt.Println("Creating neural network...")
+
+	network, err := ai.NewNetwork(18, 32, 16, 9)
+	if err != nil {
+		fmt.Println("Failed to create network:", err)
+		return
+	}
+
 	fmt.Println("Training neural network...")
 
-	fmt.Println("\n🎉 All done! Weights written to weights.json")
+	trainingConfig := ai.TrainingConfig{
+		LearningRate:  0.005,
+		CostThreshold: 0.1,
+		Epochs:        1024,
+		BatchSize:     256,
+		ExamplesDir:   outDir,
+	}
+
+	err = network.Train(&trainingConfig)
+	if err != nil {
+		fmt.Println("Failed to train network:", err)
+		return
+	}
+
+	ai.SaveNetwork(filepath.Join(savedName), network)
+
+	fmt.Printf("\n🎉 All done! Weights written to %s", savedName)
 	fmt.Println("   Go forth and let the AI play Tic-Tac-Toe 🧠🤖")
 }
