@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -85,6 +86,8 @@ func generateTrainingData() {
 	}
 
 	fmt.Printf("%d examples will be saved to %s\n", numExamples, outDir)
+	
+	exampleHashes := make(map[string]bool)
 
 	for i := 1; i <= numExamples; i++ {
 		fname := fmt.Sprintf("t3_%06d.json", i)
@@ -97,6 +100,15 @@ func generateTrainingData() {
 
 		example := createExample()
 		data, err := json.Marshal(example)
+		exampleHash := fmt.Sprintf("%x", sha256.Sum256(data))
+		if _, ok := exampleHashes[exampleHash]; ok {
+			fmt.Println("Skipping duplicate example")
+			i--
+			continue
+		} else {
+			exampleHashes[exampleHash] = true
+		}
+
 		if err != nil {
 			fmt.Println("Failed to marshal example:", err)
 			return
@@ -192,10 +204,10 @@ func trainNeuralNetwork() {
 	fmt.Println("Training neural network...")
 
 	trainingConfig := ai.TrainingConfig{
-		LearningRate:  0.005,
+		LearningRate:  0.01,
 		CostThreshold: 0.1,
-		Epochs:        1024,
-		BatchSize:     256,
+		Epochs:        512,
+		BatchSize:     128,
 		ExamplesDir:   outDir,
 	}
 
