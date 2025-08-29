@@ -26,7 +26,8 @@ func main() {
 	fmt.Println("Choose an option:")
 	fmt.Println("\t1. ✨ Generate training data")
 	fmt.Println("\t2. 🧠 Train a neural network")
-	fmt.Println("\t3. 🚪 Exit")
+	fmt.Println("\t3. 🧪 Test a neural network")
+	fmt.Println("\t4. 🚪 Exit")
 
 	scnr := bufio.NewScanner(os.Stdin)
 	for {
@@ -43,6 +44,8 @@ func main() {
 		case 2:
 			trainNeuralNetwork()
 		case 3:
+			testNeuralNetwork()
+		case 4:
 			fmt.Println("Exiting...")
 			return
 		default:
@@ -86,7 +89,7 @@ func generateTrainingData() {
 	}
 
 	fmt.Printf("%d examples will be saved to %s\n", numExamples, outDir)
-	
+
 	exampleHashes := make(map[string]bool)
 
 	for i := 1; i <= numExamples; i++ {
@@ -221,4 +224,95 @@ func trainNeuralNetwork() {
 
 	fmt.Printf("\n🎉 All done! Weights written to %s", savedName)
 	fmt.Println("   Go forth and let the AI play Tic-Tac-Toe 🧠🤖")
+}
+
+func testNeuralNetwork() {
+	savedName := "weights.json"
+	network, err := ai.LoadNetwork(savedName)
+	if err != nil {
+		fmt.Println("Failed to load network:", err)
+		return
+	}
+	fmt.Println("Loaded neural network")
+
+	fmt.Println("Welcome to T-Cubed, the game of Tic-Tac-Toe!")
+	gameStateOptions := &engine.GameStateOptions{
+		Player1Piece:  engine.PIECE_X,
+		Player2Piece:  engine.PIECE_O,
+		FirstPlayerId: 1,
+	}
+	gameState, err := engine.NewGameState(gameStateOptions)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	scnr := bufio.NewScanner(os.Stdin)
+
+	for {
+		if gameState.GetCurrentPlayerId() == 2 {
+			input := gameState.GetBoardAsNetworkInput()
+			trace := new(ai.ForwardTrace)
+			output, err := network.Forward(input, trace)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println(output)
+			fmt.Println(trace)
+			bestValue := output[0]
+			bestMove := uint8(1)
+			for i := range output {
+				if output[i] > bestValue {
+					bestValue = output[i]
+					bestMove = uint8(i + 1)
+				}
+			}
+			ok, err := gameState.Move(bestMove)
+			if err != nil {
+				panic(err)
+			}
+			if !ok {
+				panic("Invalid move")
+			}
+		} else {
+			fmt.Printf("[PLAYER %d] Enter your move (1-9): \n", gameState.GetCurrentPlayerId())
+			scnr.Scan()
+			position, err := strconv.Atoi(scnr.Text())
+			if err != nil {
+				fmt.Println("Invalid input")
+				continue
+			}
+			ok, err := gameState.Move(uint8(position))
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			if !ok {
+				fmt.Println("Invalid move")
+				continue
+			}
+		}
+
+		boardString := gameState.GetBoardAsString()
+		fmt.Println()
+		for i, c := range boardString {
+			fmt.Printf("%c", c)
+			if i == 2 || i == 5 || i == 8 {
+				fmt.Println()
+			}
+		}
+		fmt.Println()
+
+		if gameState.IsTerminal() {
+			fmt.Println("Game over!")
+			if gameState.TerminalState == engine.TERM_WIN_1 {
+				fmt.Println("Player 1 wins!")
+			} else if gameState.TerminalState == engine.TERM_WIN_2 {
+				fmt.Println("Player 2 wins!")
+			} else if gameState.TerminalState == engine.TERM_DRAW {
+				fmt.Println("Draw!")
+			}
+			break
+		}
+	}
+
 }
