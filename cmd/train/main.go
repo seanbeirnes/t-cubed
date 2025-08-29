@@ -204,10 +204,10 @@ func trainNeuralNetwork() {
 	fmt.Println("Training neural network...")
 
 	trainingConfig := ai.TrainingConfig{
-		LearningRate:  0.1,
-		CostThreshold: 0.5,
-		Epochs:        2048,
-		BatchSize:     512,
+		LearningRate:  0.01,
+		CostThreshold: 0.1,
+		Epochs:        1000,
+		BatchSize:     100,
 		ExamplesDir:   outDir,
 	}
 
