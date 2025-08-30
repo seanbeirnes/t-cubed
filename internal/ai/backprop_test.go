@@ -185,7 +185,7 @@ func TestNetwork_Train_WithSampleData(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Create sample training examples
-	examples := []trainingExample{
+	examples := []TrainingExample{
 		{Input: []float64{0.0, 0.0}, Target: []float64{1.0, 0.0}}, // XOR: 0,0 -> 1,0
 		{Input: []float64{0.0, 1.0}, Target: []float64{0.0, 1.0}}, // XOR: 0,1 -> 0,1
 		{Input: []float64{1.0, 0.0}, Target: []float64{0.0, 1.0}}, // XOR: 1,0 -> 0,1
