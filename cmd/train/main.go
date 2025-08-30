@@ -94,7 +94,7 @@ func generateTrainingData() {
 
 	exampleHashes := make(map[string]bool)
 	breakThreshold := 90.0
-	breakThresholdDecay := 0.1
+	breakThresholdDecay := 0.0001
 
 	for i := 1; i <= numExamples; i++ {
 		fname := fmt.Sprintf("t3_%06d.json", i)
@@ -106,9 +106,15 @@ func generateTrainingData() {
 		}
 
 		// Decay break threshold faster as examples are generated
-		breakThreshold -= breakThresholdDecay * (float64(i) / float64(numExamples))
+		if breakThreshold > 0.1 {
+			breakThreshold -= breakThresholdDecay * (float64(i) / float64(numExamples))
+		}
 
-		example, movesPlayed := createExample(int(math.Round(breakThreshold)))
+		example, movesPlayed, err := createExample(int(math.Round(breakThreshold)), 0)
+		if err != nil {
+			fmt.Println("Failed to generate example:", err)
+			break
+		}
 		data, err := json.Marshal(example)
 		exampleHash := fmt.Sprintf("%x", sha256.Sum256(data))
 		if _, ok := exampleHashes[exampleHash]; ok {
@@ -135,11 +141,13 @@ func generateTrainingData() {
 	fmt.Println("Done generating training data.")
 }
 
-// Plays randomly chosen moves for a randomly chosen number of turns
-// Player 1 is the faux human player and player 2 is the AI
-// Note: the AI package expects Player 2 to be the AI player
-func createExample(breakThreshold int) (ai.TrainingExample, int) {
-	// Use loop to ensure non-terminal games are generated
+// Plays randomly chosen moves for a randomly chosen number of turns.
+// Player 1 is the faux human player and player 2 is the AI.
+// Note: the AI package expects Player 2 to be the AI player.
+// 	breakThresdhold: Requires range [0, 100], where a higher value means a higher chance of breaking early in the game.
+// 	iterations: Used to prevent stack overflow. If maxIterations is reached, an error is returned.
+func createExample(breakThreshold int, iterations int) (ai.TrainingExample, int, error) {
+	maxIterations := 100
 	maxRandNum := 100
 	outputLen := 9
 
@@ -163,8 +171,8 @@ func createExample(breakThreshold int) (ai.TrainingExample, int) {
 		// Probabilistically break to generate different depths of game states
 		if movesPlayed > 0 && gameState.GetCurrentPlayerId() == AIPlayerId {
 			randNum := rand.Intn(maxRandNum)
-			// If threshold is met, return game state with AI's best move
-			if randNum > breakThreshold {
+			// If below threshold, return game state with AI's best move
+			if randNum < breakThreshold {
 				input := gameState.GetBoardAsNetworkInput()
 				// Output vector is a vector of zeros except for 1 at the best move index
 				bestMove := ai.BestMove(gameState.Board)
@@ -174,7 +182,7 @@ func createExample(breakThreshold int) (ai.TrainingExample, int) {
 				return ai.TrainingExample{
 					Input:  input,
 					Target: output,
-				}, movesPlayed
+				}, movesPlayed, nil
 			}
 		}
 
@@ -187,9 +195,17 @@ func createExample(breakThreshold int) (ai.TrainingExample, int) {
 			}
 		}
 
+		// If the game is terminal, try again until a non-terminal game is generated
 		if gameState.IsTerminal() {
-			// Try again until a non-terminal game is generated
-			return createExample(breakThreshold)
+			// Prevent stack overflow
+			if iterations > maxIterations {
+				return ai.TrainingExample{}, 0, fmt.Errorf("Failed to generate example after %d iterations", maxIterations)
+			}
+			// Increase threshold to increase chance of generating a non-terminal game
+			if breakThreshold < maxRandNum - 1 {
+				breakThreshold += 1
+			}
+			return createExample(breakThreshold, iterations+1)
 		}
 		movesPlayed++
 	}
