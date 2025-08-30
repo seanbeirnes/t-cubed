@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -91,6 +93,8 @@ func generateTrainingData() {
 	fmt.Printf("%d examples will be saved to %s\n", numExamples, outDir)
 
 	exampleHashes := make(map[string]bool)
+	breakThreshold := 90.0
+	breakThresholdDecay := 0.1
 
 	for i := 1; i <= numExamples; i++ {
 		fname := fmt.Sprintf("t3_%06d.json", i)
@@ -101,15 +105,19 @@ func generateTrainingData() {
 			return
 		}
 
-		example := createExample()
+		// Decay break threshold faster as examples are generated
+		breakThreshold -= breakThresholdDecay * (float64(i) / float64(numExamples))
+
+		example, movesPlayed := createExample(int(math.Round(breakThreshold)))
 		data, err := json.Marshal(example)
 		exampleHash := fmt.Sprintf("%x", sha256.Sum256(data))
 		if _, ok := exampleHashes[exampleHash]; ok {
-			fmt.Println("Skipping duplicate example")
 			i--
 			continue
 		} else {
 			exampleHashes[exampleHash] = true
+			msg := fmt.Sprintf("Generated example #%06d", i)
+			slog.Info(msg, "break_threshold", breakThreshold, "moves_played", movesPlayed, "hash", exampleHash)
 		}
 
 		if err != nil {
@@ -130,10 +138,9 @@ func generateTrainingData() {
 // Plays randomly chosen moves for a randomly chosen number of turns
 // Player 1 is the faux human player and player 2 is the AI
 // Note: the AI package expects Player 2 to be the AI player
-func createExample() ai.TrainingExample {
+func createExample(breakThreshold int) (ai.TrainingExample, int) {
 	// Use loop to ensure non-terminal games are generated
 	maxRandNum := 100
-	breakThreshold := 70
 	outputLen := 9
 
 	AIPlayerId := uint8(2)
@@ -167,7 +174,7 @@ func createExample() ai.TrainingExample {
 				return ai.TrainingExample{
 					Input:  input,
 					Target: output,
-				}
+				}, movesPlayed
 			}
 		}
 
@@ -182,7 +189,7 @@ func createExample() ai.TrainingExample {
 
 		if gameState.IsTerminal() {
 			// Try again until a non-terminal game is generated
-			return createExample()
+			return createExample(breakThreshold)
 		}
 		movesPlayed++
 	}
@@ -198,7 +205,7 @@ func trainNeuralNetwork() {
 
 	fmt.Println("Creating neural network...")
 
-	network, err := ai.NewNetwork(18, 32, 16, 9)
+	network, err := ai.NewNetwork(18, 32, 32, 32, 9)
 	if err != nil {
 		fmt.Println("Failed to create network:", err)
 		return
@@ -207,10 +214,10 @@ func trainNeuralNetwork() {
 	fmt.Println("Training neural network...")
 
 	trainingConfig := ai.TrainingConfig{
-		LearningRate:  0.01,
+		LearningRate:  0.001,
 		CostThreshold: 0.1,
-		Epochs:        1000,
-		BatchSize:     100,
+		Epochs:        10_000,
+		BatchSize:     10,
 		ExamplesDir:   outDir,
 	}
 

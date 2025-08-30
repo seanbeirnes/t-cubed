@@ -91,8 +91,8 @@ func (n *network) Train(trainingConfig *TrainingConfig) error {
 			if batchIndex == trainingConfig.BatchSize {
 				tn.updateWeights(trainingConfig.LearningRate, trainingConfig.BatchSize)
 
-				message := fmt.Sprintf("Completed batch of %d examples!\n\tEpoch %d: %d examples processed", batchIndex, epoch, examplesProcessed)
-				slog.Info(message)
+				// message := fmt.Sprintf("Completed batch of %d examples!\n\tEpoch %d: %d examples processed", batchIndex, epoch, examplesProcessed)
+				// slog.Info(message)
 
 				batchIndex = 0
 			}
@@ -101,8 +101,8 @@ func (n *network) Train(trainingConfig *TrainingConfig) error {
 		if batchIndex > 0 {
 			tn.updateWeights(trainingConfig.LearningRate, batchIndex)
 
-			message := fmt.Sprintf("Completed batch of %d examples!\n\tEpoch %d: %d examples processed", batchIndex, epoch, examplesProcessed)
-			slog.Info(message)
+			// message := fmt.Sprintf("Completed batch of %d examples!\n\tEpoch %d: %d examples processed", batchIndex, epoch, examplesProcessed)
+			// slog.Info(message)
 		}
 
 		avgCost := totalCost / float64(examplesProcessed)
