@@ -1,4 +1,5 @@
-import type { Layer } from "../types";
+import type { Layer, LayerType, NeuronFill } from "../types";
+import { LAYER_TYPES, NEURON_FILLS } from "../types";
 
 import { useState } from "react";
 import Neuron from "./Neuron";
@@ -62,6 +63,17 @@ function getNeuronSpacing(neuronWidth: number, neuronsInLayer: number, innerWidt
     return spacing / (neuronsInLayer - 1);
 }
 
+function getLayerType(layerIndex: number, totalLayers: number): LayerType {
+    switch (layerIndex) {
+        case 0:
+            return LAYER_TYPES.INPUT;
+        case totalLayers - 1:
+            return LAYER_TYPES.OUTPUT;
+        default:
+            return LAYER_TYPES.HIDDEN;
+    }
+}
+
 function getNeuronX(neuronIndex: number, neuronsInLayer: number, config: Config): number {
     let layerWidth: number = (neuronsInLayer - 1) * (config.neuronWidth + config.neuronSpacing)
     layerWidth += config.neuronWidth;
@@ -75,6 +87,17 @@ function getNeuronY(layerIndex: number, config: Config): number {
     const verticalOffset: number = layerIndex * layerHeight;
     const y: number = verticalOffset + config.padding;
     return y;
+}
+
+function getNeruonFill(layerType: LayerType, neuronIndex: number): NeuronFill {
+    if (layerType === LAYER_TYPES.INPUT && neuronIndex < 9) {
+        return NEURON_FILLS.INPUT_PLAYER_1;
+    } else if (layerType === LAYER_TYPES.INPUT && neuronIndex >= 9) {
+        return NEURON_FILLS.INPUT_PLAYER_2;
+    } else if (layerType === LAYER_TYPES.OUTPUT) {
+        return NEURON_FILLS.OUTPUT;
+    }
+    return NEURON_FILLS.HIDDEN;
 }
 
 export default function NNAnimationPanel({ width, network, boardState }: NNAnimationPanelProps) {
@@ -96,15 +119,16 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
             <svg width={`${innerWidth}vw`} height={`${innerHeight}vw`}>
                 {
                     network.map((layer, i) => {
+                        const layerType: LayerType = getLayerType(i, config.totalLayers);
                         return Array.from({ length: layer.size }).map((_, j) => {
                             return (
                                 <Neuron
                                     key={`neuron-${i}-${j}`}
                                     x={getNeuronX(j, layer.size, config)}
                                     y={getNeuronY(i, config)}
-                                    layerIndex={i}
-                                    neuronIndex={j}
-                                    networkLength={network.length}
+                                    fill={getNeruonFill(layerType, j)}
+                                    motionDelay={(i + j + 1) * 0.01}
+                                    activation={layer.activations ? layer.activations[j] : 0}
                                 />
                             )
                         })

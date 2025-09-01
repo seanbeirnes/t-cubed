@@ -1,3 +1,5 @@
+import type { NeuronFill } from "../types";
+
 import { motion } from "motion/react";
 
 const nodeAnimationProps = {
@@ -15,39 +17,39 @@ const nodeAnimationProps = {
 interface NeuronProps {
     x: number;
     y: number;
-    layerIndex: number;
-    neuronIndex: number;
-    networkLength: number;
+    fill: NeuronFill;
+    motionDelay: number;
+    activation: number;
 }
 
-export default function Neuron({x, y, layerIndex, neuronIndex, networkLength}: NeuronProps) {
-                            return (
-                                <g>
-                                    <motion.circle
-                                        cx={`${x}vw`}
-                                        cy={`${y}vw`}
-                                        r="0.9vw"
-                                        fill={`${layerIndex === 0 && neuronIndex < 9 ? "#00FF50" : layerIndex === 0 && neuronIndex >= 9 ? "#0050FF" : layerIndex === networkLength - 1 ? "#AFAA00" : "#AAA"}`}
-                                        fillOpacity="0.5"
-                                        stroke="#FFF"
-                                        strokeWidth="0.1vw"
-                                        custom={(layerIndex + neuronIndex + 1) * 0.01}
-                                        initial="hidden"
-                                        whileInView="visible"
-                                        variants={nodeAnimationProps}
-                                    />
-                                    <motion.circle
-                                        cx={`${x}vw`}
-                                        cy={`${y}vw`}
-                                        r="1vw"
-                                        fill="#FFF"
-                                        fillOpacity="0.5"
-                                        className={`blur-xs transition-opacity`}
-                                        custom={(layerIndex + neuronIndex + 1) * 0.01}
-                                        initial="hidden"
-                                        whileInView="visible"
-                                        variants={nodeAnimationProps}
-                                    />
-                                </g>
-                            )
+export default function Neuron({ x, y, fill, motionDelay, activation }: NeuronProps) {
+    return (
+        <g>
+            <motion.circle
+                cx={`${x}vw`}
+                cy={`${y}vw`}
+                r="1vw"
+                fill="#FFF"
+                fillOpacity={(activation ** 2)}
+                className={`blur-xs transition-opacity`}
+                custom={motionDelay}
+                initial="hidden"
+                whileInView="visible"
+                variants={nodeAnimationProps}
+            />
+            <motion.circle
+                cx={`${x}vw`}
+                cy={`${y}vw`}
+                r="0.9vw"
+                fill={fill}
+                fillOpacity="0.5"
+                stroke="#FFF"
+                strokeWidth="0.1vw"
+                custom={motionDelay}
+                initial="hidden"
+                whileInView="visible"
+                variants={nodeAnimationProps}
+            />
+        </g>
+    )
 }
