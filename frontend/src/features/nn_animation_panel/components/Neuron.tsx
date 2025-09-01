@@ -13,17 +13,19 @@ const nodeAnimationProps = {
 }
 
 interface NeuronProps {
+    x: number;
+    y: number;
     layerIndex: number;
     neuronIndex: number;
     networkLength: number;
 }
 
-export default function Neuron({layerIndex, neuronIndex, networkLength}: NeuronProps) {
+export default function Neuron({x, y, layerIndex, neuronIndex, networkLength}: NeuronProps) {
                             return (
                                 <g>
                                     <motion.circle
-                                        cx={`${(neuronIndex * 2.75) + 2}vw`}
-                                        cy={`${(layerIndex * 8) + 2}vw`}
+                                        cx={`${x}vw`}
+                                        cy={`${y}vw`}
                                         r="0.9vw"
                                         fill={`${layerIndex === 0 && neuronIndex < 9 ? "#00FF50" : layerIndex === 0 && neuronIndex >= 9 ? "#0050FF" : layerIndex === networkLength - 1 ? "#AFAA00" : "#AAA"}`}
                                         fillOpacity="0.5"
@@ -35,8 +37,8 @@ export default function Neuron({layerIndex, neuronIndex, networkLength}: NeuronP
                                         variants={nodeAnimationProps}
                                     />
                                     <motion.circle
-                                        cx={`${(neuronIndex * 2.75) + 2}vw`}
-                                        cy={`${(layerIndex * 8) + 2}vw`}
+                                        cx={`${x}vw`}
+                                        cy={`${y}vw`}
                                         r="1vw"
                                         fill="#FFF"
                                         fillOpacity="0.5"
