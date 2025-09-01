@@ -1,9 +1,7 @@
-import { delay, motion, stagger } from "motion/react";
-import { useState } from "react";
+import type { Layer } from "./features/nn_animation_panel";
+import { NNAnimationPanel } from "./features/nn_animation_panel";
 
-type Layer = {
-    size: number;
-}
+const boardSate: string[] = ["X", "0", "_", "_", "_", "X", "_", "_", "_"]
 
 const network: Layer[] = [
     { size: 18 },
@@ -13,23 +11,9 @@ const network: Layer[] = [
     { size: 9 },
 ];
 
-const nodeAnimationProps = {
-    visible: (customDelay: number) => ({
-        scale: [0.01, 1.1, 1],
-        transition: {
-            delay: customDelay,
-        }
-    }),
-    hidden: {
-        scale: 0,
-    }
-}
-
 function App() {
-    const offsetClosed: number = -33;
-    const offsetOpen: number = 0;
-
-    const [offset, setOffset]: [number, React.Dispatch<React.SetStateAction<number>>] = useState(offsetClosed);
+    const animationPanelWidth: number = 93.25;
+    const mainPadding: number = (100 - animationPanelWidth)/2;
 
     return (
         <div className="h-screen bg-slate-600 flex flex-col justify-between overflow-clip">
@@ -56,56 +40,11 @@ function App() {
                     </p>
                 </div>
             </header>
-            <main style={{padding: "3.375vw"}} className="relative w-full h-full flex flex-col justify-start items-center bg-slate-600">
+            <main style={{padding: `${mainPadding}vw`}} className="relative w-full h-full flex flex-col justify-start items-center bg-slate-600">
                 <div>
                     board goes here
                 </div>
-                <div id="animation-panel" style={
-                    {
-                        width: "93.25vw",
-                        height: "40vw",
-                        padding: "2vw",
-                        bottom: `${offset}vw`,
-                    }} className={`absolute transition-all bg-slate-500 rounded-t-2xl shadow-2xl z-10`}
-                    onClick={() => offset === offsetOpen ? setOffset(offsetClosed) : setOffset(offsetOpen)}>
-                    <svg width="89.25vw" height="36vw">
-                        {
-                            network.map((layer, i) => {
-                                return Array.from({ length: layer.size }).map((_, j) => {
-                                    return (
-                                        <g key={`layer-${i}-${j}`}>
-                                            <motion.circle
-                                                cx={`${(j * 2.75) + 2}vw`}
-                                                cy={`${(i * 8) + 2}vw`}
-                                                r="0.9vw"
-                                                fill={`${i === 0 && j < 9 ? "#00FF50" : i === 0 && j >= 9 ? "#0050FF" : i === network.length - 1 ? "#AFAA00" : "#AAA"}`}
-                                                fillOpacity="0.5"
-                                                stroke="#FFF"
-                                                strokeWidth="0.1vw"
-                                                custom={(i + j + 1) * 0.01}
-                                                initial="hidden"
-                                                whileInView="visible"
-                                                variants={nodeAnimationProps}
-                                            />
-                                            <motion.circle
-                                                cx={`${(j * 2.75) + 2}vw`}
-                                                cy={`${(i * 8) + 2}vw`}
-                                                r="1vw"
-                                                fill="#FFF"
-                                                fillOpacity="0.5"
-                                                className={`blur-xs transition-opacity`}
-                                                custom={(i + j + 1) * 0.01}
-                                                initial="hidden"
-                                                whileInView="visible"
-                                                variants={nodeAnimationProps}
-                                            />
-                                        </g>
-                                    )
-                                })
-                            })
-                        }
-                    </svg>
-                </div>
+                <NNAnimationPanel width={animationPanelWidth} network={network} boardState={boardSate}/>
             </main>
         </div>
     )
