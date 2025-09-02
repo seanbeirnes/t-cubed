@@ -30,12 +30,12 @@ export default function Neuron({ x, y, fill, motionDelay, activation }: NeuronPr
                 cy={`${y}vw`}
                 r="1vw"
                 fill="#FFF"
-                fillOpacity={(activation ** 2)}
                 className={`blur-xs transition-opacity`}
                 custom={motionDelay}
                 initial="hidden"
                 whileInView="visible"
                 variants={nodeAnimationProps}
+                animate={{opacity: activation ** 2}}
             />
             <motion.circle
                 cx={`${x}vw`}

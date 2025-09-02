@@ -178,6 +178,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                     network.map((layer, i) => {
                         const layerType: LayerType = getLayerType(i, config.totalLayers);
                         return Array.from({ length: layer.size }).map((_, j) => {
+                            const activation = layer.activations ? layer.activations[j] : 0;
                             return (
                                 <Neuron
                                     key={`neuron-${i}-${j}`}
@@ -185,7 +186,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                                     y={getNeuronY(i, config)}
                                     fill={getNeruonFill(layerType, j)}
                                     motionDelay={getMotionDelay(i, j)}
-                                    activation={layer.activations ? layer.activations[j] : 0}
+                                    activation={activation}
                                 />
                             )
                         })

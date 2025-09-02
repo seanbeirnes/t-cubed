@@ -28,6 +28,9 @@ export default function Connection({ x1, y1, x2, y2, activation }: ConnectionPro
             stroke={getLineColor(activation)}
             strokeOpacity={(activation ** 4 + 0.1) * 1}
             strokeWidth={1}
+            style={{
+                transition: "stroke-opacity stroke 0.5s ease-in-out",
+            }}
         />
     );
 }
