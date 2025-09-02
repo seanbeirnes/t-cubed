@@ -1,8 +1,10 @@
 import type { Layer, LayerType, NeuronFill } from "../types";
 import { LAYER_TYPES, NEURON_FILLS } from "../types";
 
+import { motion } from "motion/react";
 import { useState } from "react";
 import Neuron from "./Neuron";
+import Connection from "./Connection";
 
 const PADDING: number = 2;
 const INNER_PADDING: number = 1;
@@ -100,6 +102,10 @@ function getNeruonFill(layerType: LayerType, neuronIndex: number): NeuronFill {
     return NEURON_FILLS.HIDDEN;
 }
 
+function getMotionDelay(layerIndex: number, neuronIndex: number): number {
+    return (layerIndex + neuronIndex + 1) * 0.01;
+}
+
 export default function NNAnimationPanel({ width, network, boardState }: NNAnimationPanelProps) {
     const config: Config = getConfig(width, network);
 
@@ -117,6 +123,57 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
             }} className={`absolute transition-all bg-slate-500 rounded-t-2xl shadow-2xl z-10`}
             onClick={() => offset === offsetOpen ? setOffset(offsetClosed) : setOffset(offsetOpen)}>
             <svg width={`${innerWidth}vw`} height={`${innerHeight}vw`}>
+                {/* Render the connections between neurons first so they are behind the neurons */}
+                {network.map((layer, i) => {
+                    if (offset === offsetClosed) return null;
+                    if (i === network.length - 1) return null; // last layer has no outgoing connections
+
+                    const nextLayer = network[i + 1];
+
+                    return Array.from({ length: layer.size }).flatMap((_, j) => {
+                        const x1 = getNeuronX(j, layer.size, config);
+                        const y1 = getNeuronY(i, config) + config.neuronWidth / 2;
+
+                        return Array.from({ length: nextLayer.size }).map((_, k) => {
+                            const x2 = getNeuronX(k, nextLayer.size, config);
+                            const y2 = getNeuronY(i + 1, config) - config.neuronWidth / 2;
+
+                            const intensity =
+                                (layer.activations ? layer.activations[j] : 0) *
+                                (nextLayer.activations ? nextLayer.activations[k] : 0);
+
+                            return (
+                                <Connection
+                                    key={`connection-${i}-${j}-${k}`}
+                                    x1={x1}
+                                    y1={y1}
+                                    x2={x2}
+                                    y2={y2}
+                                    activation={intensity}
+                                />
+                            );
+                        });
+                    });
+                })}
+                <motion.rect
+                    key={`connections-mask-${offset}`}
+                    x={0}
+                    y={0}
+                    width={`${config.width - (config.padding * 2)}vw`}
+                    height={`${config.height - (config.padding * 2)}vw`}
+                    fill="oklch(55.4% 0.046 257.417)"
+                    animate={{
+                        opacity: [1, 0],
+                        transition: {
+                            duration: 0.5,
+                            ease: "easeInOut",
+                            delay: 0.5,
+                        }
+                    }}
+                />
+
+
+                {/* Render the neurons for each layer */}
                 {
                     network.map((layer, i) => {
                         const layerType: LayerType = getLayerType(i, config.totalLayers);
@@ -127,7 +184,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                                     x={getNeuronX(j, layer.size, config)}
                                     y={getNeuronY(i, config)}
                                     fill={getNeruonFill(layerType, j)}
-                                    motionDelay={(i + j + 1) * 0.01}
+                                    motionDelay={getMotionDelay(i, j)}
                                     activation={layer.activations ? layer.activations[j] : 0}
                                 />
                             )
