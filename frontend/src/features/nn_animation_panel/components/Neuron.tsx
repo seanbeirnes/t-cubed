@@ -42,13 +42,13 @@ export default function Neuron({ x, y, fill, motionDelay, activation }: NeuronPr
                 cy={`${y}vw`}
                 r="0.9vw"
                 fill={fill}
-                fillOpacity="0.5"
                 stroke="#FFF"
                 strokeWidth="0.1vw"
                 custom={motionDelay}
                 initial="hidden"
                 whileInView="visible"
                 variants={nodeAnimationProps}
+                animate={{fillOpacity: (activation ** 2 + 0.15) * 0.6}}
             />
         </g>
     )

@@ -117,12 +117,18 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
         <div id="nn-animation-panel" style={
             {
                 width: `${config.width}vw`,
-                height: `${config.height}vw`,
+                height: `${config.height + 4}vw`,
                 padding: `${config.padding}vw`,
                 bottom: `${offset}vw`,
             }} className={`absolute transition-all bg-slate-500 rounded-t-2xl shadow-2xl z-10`}
             onClick={() => offset === offsetOpen ? setOffset(offsetClosed) : setOffset(offsetOpen)}>
-            <svg width={`${innerWidth}vw`} height={`${innerHeight}vw`}>
+            <div className="flex flex-row justify-between">
+                <div></div>
+                <p className="text-green-400 font-bold" style={{fontSize: "2vw"}}>Player 1 (Human)</p>
+                <p className="text-blue-400 font-bold" style={{fontSize: "2vw"}}>Player 2 (AI)</p>
+                <div></div>
+            </div>
+            <svg width={`${config.innerWidth}vw`} height={`${config.innerHeight}vw`}>
                 {/* Render the connections between neurons first so they are behind the neurons */}
                 {network.map((layer, i) => {
                     if (offset === offsetClosed) return null;
@@ -193,6 +199,9 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                     })
                 }
             </svg>
+            <div className="flex flex-row justify-center">
+                <p className="text-amber-400 font-bold" style={{fontSize: "1.5vw"}}>Chosen Move</p>
+            </div>
         </div>
     )
 }
