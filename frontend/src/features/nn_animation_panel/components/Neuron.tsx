@@ -11,6 +11,8 @@ const nodeAnimationProps = {
     }),
     hidden: {
         scale: 0,
+        opacity: 1,
+        fillOpacity: 1,
     }
 }
 

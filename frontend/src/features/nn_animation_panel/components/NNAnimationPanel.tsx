@@ -1,12 +1,11 @@
 import type { Layer, LayerType, NeuronFill } from "../types";
+import type { AppState } from "../../../shared/types";
 import { LAYER_TYPES, NEURON_FILLS } from "../types";
 
-import { motion } from "motion/react";
-import { useContext, useState, type Dispatch } from "react";
+import { useContext, useState } from "react";
 import Neuron from "./Neuron";
 import Connection from "./Connection";
-import { AppStateContext, AppStateDispatchContext } from "../../../App";
-import type { AppState, AppStateAction } from "../../../shared/types";
+import { AppStateContext } from "../../../App";
 import TransitionMask from "./TransitionMask";
 
 const PADDING: number = 2;
