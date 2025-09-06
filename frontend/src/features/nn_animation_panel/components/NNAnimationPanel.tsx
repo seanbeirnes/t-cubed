@@ -2,14 +2,18 @@ import type { Layer, LayerType, NeuronFill } from "../types";
 import { LAYER_TYPES, NEURON_FILLS } from "../types";
 
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useContext, useState, type Dispatch } from "react";
 import Neuron from "./Neuron";
 import Connection from "./Connection";
+import { AppStateContext, AppStateDispatchContext } from "../../../App";
+import type { AppState, AppStateAction } from "../../../shared/types";
+import TransitionMask from "./TransitionMask";
 
 const PADDING: number = 2;
 const INNER_PADDING: number = 1;
 const NEURON_WIDTH: number = 2;
 const LAYER_MARGIN: number = 6;
+const WINDOW_WIDTH_THRESHOLD: number = 600;
 
 interface NNAnimationPanelProps {
     width: number;
@@ -17,7 +21,7 @@ interface NNAnimationPanelProps {
     boardState: string[];
 }
 
-type Config = {
+export type Config = {
     padding: number;
     innerPadding: number;
     neuronWidth: number;
@@ -106,12 +110,48 @@ function getMotionDelay(layerIndex: number, neuronIndex: number): number {
     return (layerIndex + neuronIndex + 1) * 0.01;
 }
 
+function getLayerAltText(layerIndex: number, layerType: LayerType): string {
+    if (layerType === LAYER_TYPES.INPUT) {
+        return `Layer ${layerIndex + 1}, Input Layer`;
+    } else if (layerType === LAYER_TYPES.HIDDEN) {
+        return `Layer ${layerIndex + 1}, Hidden Layer`;
+    } else if (layerType === LAYER_TYPES.OUTPUT) {
+        return `Layer ${layerIndex + 1}, Output Layer`;
+    }
+    return "";
+}
+
 export default function NNAnimationPanel({ width, network, boardState }: NNAnimationPanelProps) {
+    const appState: AppState = useContext(AppStateContext);
+
     const config: Config = getConfig(width, network);
 
     const offsetOpen: number = 0;
     const offsetClosed: number = -(config.totalLayers - 1) * (config.neuronWidth + config.layerSpacing);
     const [offset, setOffset]: [number, React.Dispatch<React.SetStateAction<number>>] = useState(offsetClosed);
+    const [expanded, setExpanded] = useState(false);
+    const [expandedCount, setExpandedCount] = useState(0);
+
+    const showNeuronText: boolean = appState.window.width > WINDOW_WIDTH_THRESHOLD;
+
+    const toggleExpanded = () => {
+        offset === offsetOpen ? setOffset(offsetClosed) : setOffset(offsetOpen);
+        setExpanded(!expanded);
+        setExpandedCount(expandedCount + 1);
+    };
+
+    /*
+     * Handles the click event on the panel. If the window is larger than the threshold, only toggle the panel if it is closed.
+     * Otherwise, toggle the panel regardless of whether it is open or closed.
+     * This is to allow the panel to be toggled by fingers on touch screens, but keep it from being toggled accidentally by mouse clicks.
+     */
+    function handlePanelClick() {
+        if (appState.window.width > WINDOW_WIDTH_THRESHOLD) {
+            if (!expanded) toggleExpanded();
+        } else {
+            toggleExpanded();
+        }
+    }
 
     return (
         <div id="nn-animation-panel" style={
@@ -120,18 +160,45 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                 height: `${config.height + 4}vw`,
                 padding: `${config.padding}vw`,
                 bottom: `${offset}vw`,
-            }} className={`absolute transition-all bg-slate-500 rounded-t-2xl shadow-2xl z-10`}
-            onClick={() => offset === offsetOpen ? setOffset(offsetClosed) : setOffset(offsetOpen)}>
-            <div className="flex flex-row justify-between">
-                <div></div>
-                <p className="text-green-400 font-bold" style={{fontSize: "2vw"}}>Player 1 (Human)</p>
-                <p className="text-blue-400 font-bold" style={{fontSize: "2vw"}}>Player 2 (AI)</p>
-                <div></div>
+            }}
+            className={`absolute transition-all bg-gradient-to-t from-slate-700 via-slate-500 to-slate-700 rounded-t-2xl shadow-2xl z-10`}
+            aria-label="Neural network animation panel"
+            onClick={handlePanelClick}
+            aria-expanded={expanded}
+            role="region"
+        >
+            <div className={`grid ${appState.window.width < WINDOW_WIDTH_THRESHOLD ? "grid-cols-2" : "grid-cols-4"} justify-items-center`}>
+                <button
+                    className={`${appState.window.width < WINDOW_WIDTH_THRESHOLD ? "hidden" : ""} justify-self-start text-white bg-slate-200 rounded-full w-32`}
+                    style={{ fontSize: "2vw" }}
+                    onClick={toggleExpanded}
+                    onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                            if (expanded) toggleExpanded();
+                        }
+                    }}
+                    aria-controls="nn-animation-panel"
+                    aria-label={expanded ? "Close neural network animation panel" : "Open neural network animation panel"}
+                >
+                    {expanded ? "V" : "^"}
+                </button>
+                <p className="text-green-400 font-bold outline-2 outline-slate-500 rounded-full text-center shadow-inner text-shadow-md text-shadow-green-900"
+                    style={{
+                        fontSize: "1.75vw",
+                        width: "20vw",
+                        padding: "0.25vw"
+                    }}>Player 1 (Human)</p>
+                <p className="text-blue-400 font-bold outline-2 outline-slate-500 rounded-full text-center shadow-inner text-shadow-md text-shadow-blue-900"
+                    style={{
+                        fontSize: "1.75vw",
+                        width: "20vw",
+                        padding: "0.25vw"
+                    }}>Player 2 (AI)</p>
             </div>
-            <svg width={`${config.innerWidth}vw`} height={`${config.innerHeight}vw`}>
+            <svg aria-label="Neural network diagram" width={`${config.innerWidth}vw`} height={`${config.innerHeight}vw`}>
                 {/* Render the connections between neurons first so they are behind the neurons */}
                 {network.map((layer, i) => {
-                    if (offset === offsetClosed) return null;
+                    if (!expanded) return null;
                     if (i === network.length - 1) return null; // last layer has no outgoing connections
 
                     const nextLayer = network[i + 1];
@@ -161,46 +228,50 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                         });
                     });
                 })}
-                <motion.rect
-                    key={`connections-mask-${offset}`}
-                    x={0}
-                    y={0}
-                    width={`${config.width - (config.padding * 2)}vw`}
-                    height={`${config.height - (config.padding * 2)}vw`}
-                    fill="oklch(55.4% 0.046 257.417)"
-                    animate={{
-                        opacity: [1, 0],
-                        transition: {
-                            duration: 0.5,
-                            ease: "easeInOut",
-                            delay: 0.5,
-                        }
-                    }}
-                />
 
+                <TransitionMask
+                    key={`connections-mask-${offset}`}
+                    config={config}
+                    blocksPerRow={32}
+                    shortenDuration={!expanded} // Duration is shorter when closing panel
+                    hidden={expandedCount === 0}// Hide the mask when page is first loaded
+                />
 
                 {/* Render the neurons for each layer */}
                 {
                     network.map((layer, i) => {
                         const layerType: LayerType = getLayerType(i, config.totalLayers);
-                        return Array.from({ length: layer.size }).map((_, j) => {
-                            const activation = layer.activations ? layer.activations[j] : 0;
-                            return (
-                                <Neuron
-                                    key={`neuron-${i}-${j}`}
-                                    x={getNeuronX(j, layer.size, config)}
-                                    y={getNeuronY(i, config)}
-                                    fill={getNeruonFill(layerType, j)}
-                                    motionDelay={getMotionDelay(i, j)}
-                                    activation={activation}
-                                />
-                            )
-                        })
+                        return (
+                            <g key={`layer-${i}`} role="treeitem" aria-label={getLayerAltText(i, layerType)}>
+                                {
+                                    Array.from({ length: layer.size }).map((_, j) => {
+                                        const activation = layer.activations ? layer.activations[j] : 0;
+                                        return (
+                                            <Neuron
+                                                key={`neuron-${i}-${j}`}
+                                                x={getNeuronX(j, layer.size, config)}
+                                                y={getNeuronY(i, config)}
+                                                fill={getNeruonFill(layerType, j)}
+                                                motionDelay={getMotionDelay(i, j)}
+                                                activation={activation}
+                                                showText={showNeuronText}
+                                            />
+                                        )
+                                    })
+                                }
+                            </g>
+                        )
                     })
                 }
             </svg>
             <div className="flex flex-row justify-center">
-                <p className="text-amber-400 font-bold" style={{fontSize: "1.5vw"}}>Chosen Move</p>
+                <p className="text-amber-400 font-bold rounded-b-lg text-center text-shadow-md text-shadow-amber-900"
+                    style={{
+                        fontSize: "1.5vw",
+                        width: "40vw",
+                    }}>
+                    ^ Best Moves ^
+                </p>
             </div>
         </div>
     )
