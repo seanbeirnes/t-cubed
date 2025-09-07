@@ -95,7 +95,7 @@ export default function Neuron({ x, y, fill, motionDelay, activation, showText =
                     initial="hidden"
                     whileInView="visible"
                     variants={nodeAnimationProps}
-                    animate={{ opacity: activation }}
+                    animate={{ opacity: activation === 0 ? 0 : activation + 0.1 }}
                     aria-hidden="true"
                 >
                     {activation.toFixed(2)}
