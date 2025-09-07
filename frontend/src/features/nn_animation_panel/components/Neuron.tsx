@@ -23,6 +23,8 @@ interface NeuronProps {
     motionDelay: number;
     activation: number;
     showText?: boolean;
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
 }
 
 function normalizeHex(hex: string): string {
@@ -50,7 +52,7 @@ function getContrastColor(hex: string): string {
 }
 
 
-export default function Neuron({ x, y, fill, motionDelay, activation, showText = true}: NeuronProps) {
+export default function Neuron({ x, y, fill, motionDelay, activation, showText = true, onMouseEnter, onMouseLeave }: NeuronProps) {
     return (
         <g
             aria-label={`Activation: ${activation.toFixed(2)}`}
@@ -101,6 +103,15 @@ export default function Neuron({ x, y, fill, motionDelay, activation, showText =
                     {activation.toFixed(2)}
                 </motion.text>
             )}
+            <motion.circle
+                cx={`${x}vw`}
+                cy={`${y}vw`}
+                r="1vw"
+                fill="transparent"
+                aria-hidden="true"
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
+            />
         </g>
     )
 }

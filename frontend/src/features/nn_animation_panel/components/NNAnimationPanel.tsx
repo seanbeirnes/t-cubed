@@ -3,6 +3,7 @@ import type { AppState } from "../../../shared/types";
 import { LAYER_TYPES, NEURON_FILLS } from "../types";
 
 import { useContext, useState } from "react";
+import { ChevronsUpDown, ChevronsDownUp, ArrowUp, ArrowDown } from "lucide-react";
 import Neuron from "./Neuron";
 import Connection from "./Connection";
 import { AppStateContext } from "../../../App";
@@ -12,7 +13,7 @@ const PADDING: number = 2;
 const INNER_PADDING: number = 1;
 const NEURON_WIDTH: number = 2;
 const LAYER_MARGIN: number = 6;
-const WINDOW_WIDTH_THRESHOLD: number = 600;
+const WINDOW_WIDTH_THRESHOLD: number = 768;
 
 interface NNAnimationPanelProps {
     width: number;
@@ -32,6 +33,11 @@ export type Config = {
     innerWidth: number;
     innerHeight: number;
 }
+
+type HoveredNeuron = {
+    layerIndex: number,
+    neuronIndex: number
+} | null;
 
 function getConfig(width: number, network: Layer[]): Config {
     const height: number = (NEURON_WIDTH + LAYER_MARGIN) * network.length;
@@ -120,8 +126,21 @@ function getLayerAltText(layerIndex: number, layerType: LayerType): string {
     return "";
 }
 
+function isHoveredNeuronInOutputLayer(hoveredNeuron: HoveredNeuron | null, config: Config): boolean {
+    return hoveredNeuron !== null && hoveredNeuron.layerIndex === config.totalLayers - 1;
+}
+
+function isHoveredNeuronInInputLayerPlayer1(hoveredNeuron: HoveredNeuron | null, config: Config): boolean {
+    return hoveredNeuron !== null && hoveredNeuron.layerIndex === 0 && hoveredNeuron.neuronIndex < 9;
+}
+
+function isHoveredNeuronInInputLayerPlayer2(hoveredNeuron: HoveredNeuron | null, config: Config): boolean {
+    return hoveredNeuron !== null && hoveredNeuron.layerIndex === 0 && hoveredNeuron.neuronIndex >= 9;
+}
+
 export default function NNAnimationPanel({ width, network, boardState }: NNAnimationPanelProps) {
     const appState: AppState = useContext(AppStateContext);
+    const showNeuronText: boolean = appState.window.width > WINDOW_WIDTH_THRESHOLD;
 
     const config: Config = getConfig(width, network);
 
@@ -130,8 +149,11 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
     const [offset, setOffset]: [number, React.Dispatch<React.SetStateAction<number>>] = useState(offsetClosed);
     const [expanded, setExpanded] = useState(false);
     const [expandedCount, setExpandedCount] = useState(0);
+    const [hoveredNeuron, setHoveredNeuron] = useState<HoveredNeuron>(null);
 
-    const showNeuronText: boolean = appState.window.width > WINDOW_WIDTH_THRESHOLD;
+    const handleNeuronHover = (hoveredNeuron: HoveredNeuron | null) => {
+        setHoveredNeuron(hoveredNeuron);
+    };
 
     const toggleExpanded = () => {
         offset === offsetOpen ? setOffset(offsetClosed) : setOffset(offsetOpen);
@@ -166,10 +188,10 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
             aria-expanded={expanded}
             role="region"
         >
-            <div className={`grid ${appState.window.width < WINDOW_WIDTH_THRESHOLD ? "grid-cols-2" : "grid-cols-4"} justify-items-center`}>
+            <div className={`grid grid-cols-2 md:grid-cols-8 justify-items-center gap-[2vw]`}>
                 <button
-                    className={`${appState.window.width < WINDOW_WIDTH_THRESHOLD ? "hidden" : ""} justify-self-start text-white bg-slate-200 rounded-full w-32`}
-                    style={{ fontSize: "2vw" }}
+                    className={`col-span-1 ${appState.window.width < WINDOW_WIDTH_THRESHOLD ? "hidden" : ""} 
+                    justify-self-start min-w-[2vw] px-6 py-1 text-amber-500 bg-slate-500 hover:text-amber-400 hover:bg-slate-400 active:text-amber-600 active:bg-slate-600 transition-all shadow-inner rounded-full`}
                     onClick={toggleExpanded}
                     onKeyDown={(e) => {
                         if (e.key === "Escape") {
@@ -178,21 +200,30 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                     }}
                     aria-controls="nn-animation-panel"
                     aria-label={expanded ? "Close neural network animation panel" : "Open neural network animation panel"}
+                    title={expanded ? "Close neural network animation panel" : "Open neural network animation panel"}
                 >
-                    {expanded ? "V" : "^"}
+                    {expanded ? <ChevronsDownUp className="w-full h-full" /> : <ChevronsUpDown className="w-full h-full animate-pulse" />}
                 </button>
-                <p className="text-green-400 font-bold outline-2 outline-slate-500 rounded-full text-center shadow-inner text-shadow-md text-shadow-green-900"
+                <p className={`group ${isHoveredNeuronInInputLayerPlayer1(hoveredNeuron, config) ? "is-hovered" : ""} col-span-1 md:col-span-3 justify-self-end flex justify-around items-center text-green-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-green-900`}
                     style={{
                         fontSize: "1.75vw",
-                        width: "20vw",
+                        width: "24vw",
                         padding: "0.25vw"
-                    }}>Player 1 (Human)</p>
-                <p className="text-blue-400 font-bold outline-2 outline-slate-500 rounded-full text-center shadow-inner text-shadow-md text-shadow-blue-900"
+                    }}>
+                    <ArrowDown className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-bounce" />
+                    <span className="group-[.is-hovered]:animate-pulse">Player 1 (Human)</span>
+                    <ArrowDown className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-bounce" />
+                </p>
+                <p className={`group ${isHoveredNeuronInInputLayerPlayer2(hoveredNeuron, config) ? "is-hovered" : ""} col-span-1 md:col-span-3 justify-self-start flex justify-around items-center text-blue-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-blue-900`}
                     style={{
                         fontSize: "1.75vw",
-                        width: "20vw",
+                        width: "24vw",
                         padding: "0.25vw"
-                    }}>Player 2 (AI)</p>
+                    }}>
+                    <ArrowDown className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-bounce" />
+                    <span className="group-[.is-hovered]:animate-pulse">Player 2 (AI)</span>
+                    <ArrowDown className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-bounce" />
+                </p>
             </div>
             <svg aria-label="Neural network diagram" width={`${config.innerWidth}vw`} height={`${config.innerHeight}vw`}>
                 {/* Render the connections between neurons first so they are behind the neurons */}
@@ -254,6 +285,8 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                                                 motionDelay={getMotionDelay(i, j)}
                                                 activation={activation}
                                                 showText={showNeuronText}
+                                                onMouseEnter={() => handleNeuronHover({ layerIndex: i, neuronIndex: j })}
+                                                onMouseLeave={() => handleNeuronHover(null)}
                                             />
                                         )
                                     })
@@ -263,14 +296,19 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                     })
                 }
             </svg>
-            <div className="flex flex-row justify-center">
-                <p className="text-amber-400 font-bold rounded-b-lg text-center text-shadow-md text-shadow-amber-900"
+            {/* This section is animated when the output layer is hovered over */}
+            <div className={`group ${isHoveredNeuronInOutputLayer(hoveredNeuron, config) ? "is-hovered" : ""} flex flex-row justify-center items-center gap-[1vw] text-amber-400 font-bold text-shadow-md text-shadow-amber-900`}>
+                <ArrowUp className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-bounce" aria-hidden="true" />
+                <span 
+                    className="group-[.is-hovered]:animate-pulse"
                     style={{
                         fontSize: "1.5vw",
-                        width: "40vw",
-                    }}>
-                    ^ Best Moves ^
-                </p>
+                    }}
+                    aria-label="The best moves for AI are the outputs of the neural network"
+                >
+                    Best Moves for AI
+                </span>
+                <ArrowUp className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-bounce" aria-hidden="true" />
             </div>
         </div>
     )
