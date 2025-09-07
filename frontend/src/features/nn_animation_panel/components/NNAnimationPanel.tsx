@@ -307,7 +307,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
             {/* This section is animated when the output layer is hovered over */}
             <div className={`group ${isHoveredNeuronInOutputLayer(hoveredNeuron, config) ? "is-hovered" : ""} flex flex-row justify-center items-center gap-[1vw] text-amber-400 font-bold text-shadow-md text-shadow-amber-900`}>
                 <ArrowUp className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-ping" aria-hidden="true" />
-                <span 
+                <span
                     className="group-[.is-hovered]:animate-pulse"
                     style={{
                         fontSize: "1.5vw",
