@@ -162,13 +162,13 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
     };
 
     /*
-     * Handles the click event on the panel. If the window is larger than the threshold, only toggle the panel if it is closed.
-     * Otherwise, toggle the panel regardless of whether it is open or closed.
+     * Handles the click event on the panel. If the window is larger than the threshold, users must click the button.
+     * Otherwise, toggle the panel for smaller screens when the button is not rendered.
      * This is to allow the panel to be toggled by fingers on touch screens, but keep it from being toggled accidentally by mouse clicks.
      */
     function handlePanelClick() {
         if (appState.window.width > WINDOW_WIDTH_THRESHOLD) {
-            if (!expanded) toggleExpanded();
+            return;
         } else {
             toggleExpanded();
         }
