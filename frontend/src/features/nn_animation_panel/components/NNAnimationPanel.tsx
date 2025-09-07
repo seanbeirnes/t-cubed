@@ -210,9 +210,13 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                         width: "24vw",
                         padding: "0.25vw"
                     }}>
-                    <ArrowDown className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-bounce" />
+                    <ArrowDown className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-ping"
+                        aria-hidden="true"
+                    />
                     <span className="group-[.is-hovered]:animate-pulse">Player 1 (Human)</span>
-                    <ArrowDown className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-bounce" />
+                    <ArrowDown className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-ping"
+                        aria-hidden="true"
+                    />
                 </p>
                 <p className={`group ${isHoveredNeuronInInputLayerPlayer2(hoveredNeuron, config) ? "is-hovered" : ""} col-span-1 md:col-span-3 justify-self-start flex justify-around items-center text-blue-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-blue-900`}
                     style={{
@@ -220,9 +224,13 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                         width: "24vw",
                         padding: "0.25vw"
                     }}>
-                    <ArrowDown className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-bounce" />
+                    <ArrowDown className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-ping"
+                        aria-hidden="true"
+                    />
                     <span className="group-[.is-hovered]:animate-pulse">Player 2 (AI)</span>
-                    <ArrowDown className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-bounce" />
+                    <ArrowDown className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-ping"
+                        aria-hidden="true"
+                    />
                 </p>
             </div>
             <svg aria-label="Neural network diagram" width={`${config.innerWidth}vw`} height={`${config.innerHeight}vw`}>
@@ -298,7 +306,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
             </svg>
             {/* This section is animated when the output layer is hovered over */}
             <div className={`group ${isHoveredNeuronInOutputLayer(hoveredNeuron, config) ? "is-hovered" : ""} flex flex-row justify-center items-center gap-[1vw] text-amber-400 font-bold text-shadow-md text-shadow-amber-900`}>
-                <ArrowUp className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-bounce" aria-hidden="true" />
+                <ArrowUp className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-ping" aria-hidden="true" />
                 <span 
                     className="group-[.is-hovered]:animate-pulse"
                     style={{
@@ -308,7 +316,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                 >
                     Best Moves for AI
                 </span>
-                <ArrowUp className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-bounce" aria-hidden="true" />
+                <ArrowUp className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-ping" aria-hidden="true" />
             </div>
         </div>
     )
