@@ -182,7 +182,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                 padding: `${config.padding}vw`,
                 bottom: `${offset}vw`,
             }}
-            className={`absolute transition-all bg-gradient-to-t from-slate-700 via-slate-500 to-slate-700 rounded-t-2xl shadow-2xl z-10`}
+            className={`absolute transition-all bg-gradient-to-t from-slate-700 via-slate-500 to-slate-700 outline-2 outline-slate-500 rounded-t-2xl shadow-2xl z-10`}
             aria-label="Neural network animation panel"
             onClick={handlePanelClick}
             aria-expanded={expanded}
@@ -191,7 +191,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
             <div className={`grid grid-cols-2 md:grid-cols-8 justify-items-center gap-[2vw]`}>
                 <button
                     className={`col-span-1 ${appState.window.width < WINDOW_WIDTH_THRESHOLD ? "hidden" : ""} 
-                    justify-self-start min-w-[2vw] px-6 py-1 text-amber-500 bg-slate-500 hover:text-amber-400 hover:bg-slate-400 active:text-amber-600 active:bg-slate-600 transition-all shadow-inner rounded-full`}
+                    justify-self-start min-w-[2vw] px-6 py-1 outline-2 outline-amber-500 text-amber-500 bg-slate-500 hover:text-amber-400 hover:outline-amber-400 hover:bg-slate-400 active:text-amber-600 active:bg-slate-600 transition-all shadow-inner rounded-full`}
                     onClick={toggleExpanded}
                     onKeyDown={(e) => {
                         if (e.key === "Escape") {
