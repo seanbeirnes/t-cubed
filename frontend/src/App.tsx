@@ -97,7 +97,8 @@ function App() {
     return (
         <AppStateContext.Provider value={appState}>
             <AppStateDispatchContext.Provider value={dispatch}>
-                <div className="h-screen bg-slate-600 flex flex-col justify-between overflow-clip">
+                {/* Use min-h to prevent the game boar from clipping when window height is too small */}
+                <div className="h-screen min-h-158 md:min-h-188 bg-slate-600 flex flex-col overflow-clip">
                     <header className="p-2 flex flex-col items-center gap-2 lg:flex-row lg:justify-between lg:items-start">
                         <div className="w-40">
                         </div>
@@ -121,9 +122,15 @@ function App() {
                             </p>
                         </div>
                     </header>
-                    <main style={{ padding: `${mainPadding}vw` }} className="relative w-full h-full flex flex-col justify-start items-center bg-slate-600">
-                        <NNGameBoard boardState={boardSate} />
-                        <NNAnimationPanel width={animationPanelWidth} network={network} boardState={boardSate} />
+                    <main style={{ padding: `0 ${mainPadding}vw 0 ${mainPadding}vw` }} className="relative w-full h-full flex flex-col justify-start items-center bg-slate-600">
+                        <NNGameBoard 
+                            boardState={boardSate} 
+                            humanToken="X" 
+                            aiToken="O" />
+                        <NNAnimationPanel 
+                            width={animationPanelWidth} 
+                            network={network} 
+                            boardState={boardSate} />
                     </main>
                 </div>
             </AppStateDispatchContext.Provider>
