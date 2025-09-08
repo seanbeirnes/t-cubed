@@ -36,10 +36,10 @@ export default function TransitionMask({config, blocksPerRow, shortenDuration, h
                                         delay: -1.2 + (i/totalBlocks) + Math.random() * 0.1
                                     },
                                     opacity: {
-                                        duration: shortenDuration ? 0.05 : 0.8 + Math.random() * 0.4 + (i/totalBlocks),
+                                        duration: shortenDuration ? 0.0 : 0.8 + Math.random() * 0.4 + (i/totalBlocks),
                                     },
                                     scale: {
-                                        duration: shortenDuration ? 0.05 : 1 + Math.random() * 0.2 + (i/totalBlocks),
+                                        duration: shortenDuration ? 0.0 : 1 + Math.random() * 0.2 + (i/totalBlocks),
                                     }
                                 }}
                             />
