@@ -2,9 +2,10 @@ import type { AppState, AppStateAction} from "./shared/types";
 import type { Layer } from "./features/nn_animation_panel";
 import { APP_STATE_ACTIONS } from "./shared/types";
 import { NNAnimationPanel } from "./features/nn_animation_panel";
+import { NNGameBoard } from "./features/nn_game_board";
 import { createContext, useEffect, useReducer, type Dispatch } from "react";
 
-const boardSate: string[] = ["X", "0", "_", "_", "_", "X", "_", "_", "_"]
+const boardSate: string[] = ["X", "O", "_", "_", "_", "X", "_", "_", "_"]
 
 const network: Layer[] = [
     {
@@ -121,9 +122,7 @@ function App() {
                         </div>
                     </header>
                     <main style={{ padding: `${mainPadding}vw` }} className="relative w-full h-full flex flex-col justify-start items-center bg-slate-600">
-                        <div>
-                            board goes here
-                        </div>
+                        <NNGameBoard boardState={boardSate} />
                         <NNAnimationPanel width={animationPanelWidth} network={network} boardState={boardSate} />
                     </main>
                 </div>
