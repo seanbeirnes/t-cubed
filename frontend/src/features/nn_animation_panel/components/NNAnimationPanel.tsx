@@ -191,7 +191,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
             <div className={`grid grid-cols-2 md:grid-cols-8 justify-items-center gap-[2vw]`}>
                 <button
                     className={`col-span-1 ${appState.window.width < WINDOW_WIDTH_THRESHOLD ? "hidden" : ""} 
-                    justify-self-start min-w-[2vw] px-6 py-1 outline-2 outline-amber-500 text-amber-500 bg-slate-500 hover:text-amber-400 hover:outline-amber-400 hover:bg-slate-400 active:text-amber-600 active:bg-slate-600 transition-all shadow-inner rounded-full`}
+                    justify-self-start min-w-[2vw] px-6 py-1 outline-2 outline-amber-500 text-amber-500 bg-slate-500 hover:text-amber-400 hover:outline-amber-400 hover:bg-slate-400 active:text-amber-600 active:bg-slate-600 transition-all duration-200 shadow-inner rounded-full`}
                     onClick={toggleExpanded}
                     onKeyDown={(e) => {
                         if (e.key === "Escape") {
@@ -204,7 +204,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                 >
                     {expanded ? <ChevronsDownUp className="w-full h-full" /> : <ChevronsUpDown className="w-full h-full animate-pulse" />}
                 </button>
-                <p className={`group ${isHoveredNeuronInInputLayerPlayer1(hoveredNeuron, config) ? "is-hovered opacity-75" : ""} col-span-1 md:col-span-3 justify-self-end flex justify-around items-center text-green-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-green-900`}
+                <p className={`group ${isHoveredNeuronInInputLayerPlayer1(hoveredNeuron, config) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 col-span-1 md:col-span-3 justify-self-end flex justify-around items-center text-green-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-green-900`}
                     style={{
                         fontSize: "1.75vw",
                         width: "24vw",
@@ -218,7 +218,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                         aria-hidden="true"
                     />
                 </p>
-                <p className={`group ${isHoveredNeuronInInputLayerPlayer2(hoveredNeuron, config) ? "is-hovered opacity-75" : ""} col-span-1 md:col-span-3 justify-self-start flex justify-around items-center text-blue-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-blue-900`}
+                <p className={`group ${isHoveredNeuronInInputLayerPlayer2(hoveredNeuron, config) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 col-span-1 md:col-span-3 justify-self-start flex justify-around items-center text-blue-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-blue-900`}
                     style={{
                         fontSize: "1.75vw",
                         width: "24vw",
@@ -305,7 +305,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                 }
             </svg>
             {/* This section is animated when the output layer is hovered over */}
-            <div className={`group ${isHoveredNeuronInOutputLayer(hoveredNeuron, config) ? "is-hovered opacity-75" : ""} flex flex-row justify-center items-center gap-[1vw] text-amber-400 font-bold text-shadow-md text-shadow-amber-900`}>
+            <div className={`group ${isHoveredNeuronInOutputLayer(hoveredNeuron, config) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 flex flex-row justify-center items-center gap-[1vw] text-amber-400 font-bold text-shadow-md text-shadow-amber-900`}>
                 <ArrowUp className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-pulse" 
                     aria-hidden="true" />
                 <span
