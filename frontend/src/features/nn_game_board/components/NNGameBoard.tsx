@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ErrorMessage } from "../../../shared/components";
 
 export interface NNGameBoardProps {
@@ -48,6 +49,16 @@ export function NNGameBoard({ boardState, humanToken, aiToken }: NNGameBoardProp
             </div>
         );
     }
+
+    const [hoveredCell, setHoveredCell] = useState<number | null>(null);
+
+    const handleCellHover = (cell: number | null) => {
+        if (cell !== null && (cell < 0 || cell > 8)) {
+            console.warn("Invalid cell index");
+            return;
+        }
+        setHoveredCell(cell);
+    };
 
     // Determine simple winner/highlight if any (client-only visual cue)
     const lines = [
@@ -106,48 +117,54 @@ export function NNGameBoard({ boardState, humanToken, aiToken }: NNGameBoardProp
                             const isWinning = winningLine?.includes(idx) ?? false;
 
                             return (
-                                <button
-                                    key={idx}
-                                    role="gridcell"
-                                    aria-label={`cell ${idx + 1} ${token === "_" ? "empty" : token}`}
-                                    disabled={token !== "_"}
-                                    className={[
-                                        "relative aspect-square flex items-center justify-center select-none",
-                                        "transition-all duration-200",
-                                        "focus-within:bg-slate-700/40",
-                                        token === "_" ? "cursor-pointer hover:bg-slate-700/40 active:bg-slate-400/40 active:shadow-inner" : "",
-                                        "outline-1 outline-slate-600/60",
-                                        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]",
-                                        isWinning ? "bg-gradient-to-br from-amber-500/10 to-amber-400/5" : "",
-                                    ].join(" ")}
+                                <div
+                                    key={`cell-${idx}`}
+                                    className="relative aspect-square"
+                                    onMouseEnter={() => handleCellHover(idx)}
+                                    onMouseLeave={() => handleCellHover(null)}
                                 >
-                                    {/* Glow ring on win */}
-                                    {isWinning && (
-                                        <div className="absolute inset-0 pointer-events-none">
-                                            <div className="absolute inset-2 rounded-xl ring-2 ring-amber-400/70 blur-[1px]"></div>
-                                            <div className="absolute inset-3 rounded-xl ring-1 ring-amber-300/60 opacity-60"></div>
-                                        </div>
-                                    )}
-
-                                    {/* Token */}
-                                    <span
+                                    <button
+                                        role="gridcell"
+                                        aria-label={`cell ${idx + 1} ${token === "_" ? "empty" : token}`}
+                                        disabled={token !== "_"}
                                         className={[
-                                            "font-extrabold",
+                                            "w-full h-full flex items-center justify-center select-none",
                                             "transition-all duration-200",
-                                            "tracking-tight",
-                                            tokenClasses(token),
-                                            token === "_" ? "scale-95" : "scale-100",
-                                            // fluid sizing
-                                            "text-5xl md:text-6xl lg:text-7xl",
+                                            "focus-within:bg-slate-700/40",
+                                            token === "_" ? "cursor-pointer hover:bg-slate-700/40 active:bg-slate-400/40 active:shadow-inner" : "",
+                                            "outline-1 outline-slate-600/60",
+                                            "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]",
+                                            isWinning ? "bg-gradient-to-br from-amber-500/10 to-amber-400/5" : "",
                                         ].join(" ")}
                                     >
-                                        {renderToken(token)}
-                                    </span>
-                                    {/* Move rankings */}
-                                    <p className={`absolute top-2 left-2 w-4 h-4 text-xs text-center rounded-full outline-2 ${token === "_" ? "text-amber-50 outline-amber-400 bg-amber-400/80" : "text-slate-200 outline-slate-400 bg-slate-400/80"}`}>
-                                        2
-                                    </p>
-                                </button>
+                                        {/* Glow ring on win */}
+                                        {isWinning && (
+                                            <div className="absolute inset-0 pointer-events-none">
+                                                <div className="absolute inset-2 rounded-xl ring-2 ring-amber-400/70 blur-[1px]"></div>
+                                                <div className="absolute inset-3 rounded-xl ring-1 ring-amber-300/60 opacity-60"></div>
+                                            </div>
+                                        )}
+
+                                        {/* Token */}
+                                        <span
+                                            className={[
+                                                "font-extrabold",
+                                                "transition-all duration-200",
+                                                "tracking-tight",
+                                                tokenClasses(token),
+                                                token === "_" ? "scale-95" : "scale-100",
+                                                // fluid sizing
+                                                "text-5xl md:text-6xl lg:text-7xl",
+                                            ].join(" ")}
+                                        >
+                                            {renderToken(token)}
+                                        </span>
+                                        {/* Move rankings */}
+                                        <p className={`absolute top-2 left-2 w-4 h-4 text-xs text-center rounded-full outline-2 ${token === "_" ? "text-amber-50 outline-amber-400 bg-amber-400/80" : "text-slate-200 outline-slate-400 bg-slate-400/80"}`}>
+                                            2
+                                        </p>
+                                    </button>
+                                </div>
                             );
                         })}
                     </div>
