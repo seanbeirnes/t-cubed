@@ -15,19 +15,30 @@ function Index() {
                         Welcome to T<sup>3</sup>
                     </h1>
                     <p className="text-slate-200 text-base md:text-lg text-left">
-                        Tic-Tac-Toe, reimagined — play a friend, challenge Minimax, or experience the neural network with beautiful live animations.
+                        Tic-Tac-Toe, reimagined — play a friend, challenge Minimax, or experience a neural network with beautiful live animations.
                     </p>
                 </header>
 
                 <main className="flex flex-col items-center">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-                        <NavCard to="/game/human" title="Play a Human" icon={<UserRound className="w-6 h-6" />} color="from-green-500/20 to-green-400/10" ring="ring-green-400" />
+                        <NavCard 
+                            to="/game/human" 
+                            title="Challenge Friends" 
+                            description="Play a game online with anyone!"
+                            icon={<UserRound className="w-6 h-6" />} 
+                            color="from-green-500/20 to-green-400/10" ring="ring-green-400" />
 
-                        <NavCard to="/game/minimax" title="Play a Minimax AI" icon={<Swords className="w-6 h-6" />} color="from-blue-500/20 to-blue-400/10" ring="ring-blue-400" />
+                        <NavCard 
+                            to="/game/minimax" 
+                            title="Challenge Minimax AI"
+                            description="Play against Minimax, a classic AI algorithm."
+                            icon={<Swords className="w-6 h-6" />} 
+                            color="from-blue-500/20 to-blue-400/10" ring="ring-blue-400" />
 
                         <NavCard
                             to="/game/nn"
-                            title="Play a Neural Network AI"
+                            title="Challenge Neural Net AI"
+                            description="Play a neural network and see it in action!"
                             icon={<Brain className="w-6 h-6" />}
                             color="from-amber-500/25 to-amber-400/10"
                             ring="ring-amber-400"
@@ -65,6 +76,7 @@ function Index() {
 type NavCardProps = {
     to: string
     title: string
+    description: string
     icon: React.ReactNode
     color: string
     ring: string
@@ -89,14 +101,12 @@ function TechStackBadge({ label, icon }: { label: string; icon: React.ReactNode 
     )
 }
 
-function NavCard({ to, title, icon, color, ring, featured = false }: NavCardProps) {
+function NavCard({ to, title, description, icon, color, ring, featured = false }: NavCardProps) {
     return (
         <Link
             to={to}
-            // TODO: update the destination routes if your router paths differ:
-            // e.g., "/play/human", "/play/minimax", "/play/nn"
             className={[
-                "group relative rounded-2xl p-5 md:p-6",
+                "group relative rounded-2xl p-4 md:p-6",
                 "bg-gradient-to-br", color,
                 "backdrop-blur-sm",
                 "shadow-xl hover:shadow-2xl",
@@ -122,10 +132,8 @@ function NavCard({ to, title, icon, color, ring, featured = false }: NavCardProp
                     >
                         {title}
                     </h3>
-                    <p className="text-slate-300 text-sm">
-                        {featured ? "Our crown jewel with mesmerizing network visuals." :
-                            title.includes("Human") ? "Pass-and-play against a friend." :
-                                "Solid tactical opponent powered by Minimax."}
+                    <p className="text-slate-300 text-xs">
+                        {description}
                     </p>
                 </div>
             </div>
