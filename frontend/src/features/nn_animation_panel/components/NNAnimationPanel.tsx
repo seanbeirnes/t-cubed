@@ -202,7 +202,7 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
                     aria-label={expanded ? "Close neural network animation panel" : "Open neural network animation panel"}
                     title={expanded ? "Close neural network animation panel" : "Open neural network animation panel"}
                 >
-                    {expanded ? <ChevronsDownUp className="w-full h-full" /> : <ChevronsUpDown className="w-full h-full animate-pulse" />}
+                    {expanded ? <ChevronsDownUp className="w-full h-full" /> : <ChevronsUpDown className="w-full h-full" />}
                 </button>
                 <p className={`group ${isHoveredNeuronInInputLayerPlayer1(hoveredNeuron) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 col-span-1 md:col-span-3 justify-self-end flex justify-around items-center text-green-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-green-900`}
                     style={{
@@ -270,7 +270,7 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
                 <TransitionMask
                     key={`connections-mask-${offset}`}
                     config={config}
-                    blocksPerRow={32}
+                    blocksPerRow={10}
                     shortenDuration={!expanded} // Duration is shorter when closing panel
                     hidden={expandedCount === 0}// Hide the mask when page is first loaded
                 />

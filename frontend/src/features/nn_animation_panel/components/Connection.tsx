@@ -19,6 +19,7 @@ function getLineColor(activation: number): string {
 }
 
 export default function Connection({ x1, y1, x2, y2, activation }: ConnectionProps) {
+    if (activation === 0) return null;
     return (
         <line
             x1={`${x1}vw`}
