@@ -130,15 +130,15 @@ function isHoveredNeuronInOutputLayer(hoveredNeuron: HoveredNeuron | null, confi
     return hoveredNeuron !== null && hoveredNeuron.layerIndex === config.totalLayers - 1;
 }
 
-function isHoveredNeuronInInputLayerPlayer1(hoveredNeuron: HoveredNeuron | null, config: Config): boolean {
+function isHoveredNeuronInInputLayerPlayer1(hoveredNeuron: HoveredNeuron | null): boolean {
     return hoveredNeuron !== null && hoveredNeuron.layerIndex === 0 && hoveredNeuron.neuronIndex < 9;
 }
 
-function isHoveredNeuronInInputLayerPlayer2(hoveredNeuron: HoveredNeuron | null, config: Config): boolean {
+function isHoveredNeuronInInputLayerPlayer2(hoveredNeuron: HoveredNeuron | null): boolean {
     return hoveredNeuron !== null && hoveredNeuron.layerIndex === 0 && hoveredNeuron.neuronIndex >= 9;
 }
 
-export default function NNAnimationPanel({ width, network, boardState }: NNAnimationPanelProps) {
+export default function NNAnimationPanel({ width, network }: NNAnimationPanelProps) {
     const appState: AppState = useContext(AppStateContext);
     const showNeuronText: boolean = appState.window.width > WINDOW_WIDTH_THRESHOLD;
 
@@ -204,7 +204,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                 >
                     {expanded ? <ChevronsDownUp className="w-full h-full" /> : <ChevronsUpDown className="w-full h-full animate-pulse" />}
                 </button>
-                <p className={`group ${isHoveredNeuronInInputLayerPlayer1(hoveredNeuron, config) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 col-span-1 md:col-span-3 justify-self-end flex justify-around items-center text-green-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-green-900`}
+                <p className={`group ${isHoveredNeuronInInputLayerPlayer1(hoveredNeuron) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 col-span-1 md:col-span-3 justify-self-end flex justify-around items-center text-green-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-green-900`}
                     style={{
                         fontSize: "1.75vw",
                         width: "24vw",
@@ -218,7 +218,7 @@ export default function NNAnimationPanel({ width, network, boardState }: NNAnima
                         aria-hidden="true"
                     />
                 </p>
-                <p className={`group ${isHoveredNeuronInInputLayerPlayer2(hoveredNeuron, config) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 col-span-1 md:col-span-3 justify-self-start flex justify-around items-center text-blue-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-blue-900`}
+                <p className={`group ${isHoveredNeuronInInputLayerPlayer2(hoveredNeuron) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 col-span-1 md:col-span-3 justify-self-start flex justify-around items-center text-blue-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-blue-900`}
                     style={{
                         fontSize: "1.75vw",
                         width: "24vw",

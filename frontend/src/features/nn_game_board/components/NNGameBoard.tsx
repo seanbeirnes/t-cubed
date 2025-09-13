@@ -50,7 +50,7 @@ export function NNGameBoard({ boardState, humanToken, aiToken }: NNGameBoardProp
         );
     }
 
-    const [hoveredCell, setHoveredCell] = useState<number | null>(null);
+    const [_, setHoveredCell] = useState<number | null>(null);
 
     const handleCellHover = (cell: number | null) => {
         if (cell !== null && (cell < 0 || cell > 8)) {
