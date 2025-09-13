@@ -182,7 +182,7 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
                 padding: `${config.padding}vw`,
                 bottom: `${offset}vw`,
             }}
-            className={`absolute transition-all bg-gradient-to-t from-slate-700 via-slate-500 to-slate-700 outline-2 outline-slate-500 rounded-t-2xl shadow-2xl z-10`}
+            className={`absolute transition-all bg-gradient-to-t from-slate-700 via-slate-500 to-slate-700 outline-2 outline-slate-500 rounded-t-2xl shadow-2xl z-100`}
             aria-label="Neural network animation panel"
             onClick={handlePanelClick}
             aria-expanded={expanded}
@@ -236,7 +236,6 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
             <svg aria-label="Neural network diagram" width={`${config.innerWidth}vw`} height={`${config.innerHeight}vw`}>
                 {/* Render the connections between neurons first so they are behind the neurons */}
                 {network.map((layer, i) => {
-                    if (!expanded) return null;
                     if (i === network.length - 1) return null; // last layer has no outgoing connections
 
                     const nextLayer = network[i + 1];
@@ -261,6 +260,7 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
                                     x2={x2}
                                     y2={y2}
                                     activation={intensity}
+                                    hidden={!expanded}
                                 />
                             );
                         });

@@ -58,7 +58,7 @@ export default function Neuron({ x, y, fill, motionDelay, activation, showText =
             aria-label={`Activation: ${activation.toFixed(2)}`}
             role="img"
         >
-            <motion.circle
+            {activation > 0.5 && <motion.circle
                 cx={`${x}vw`}
                 cy={`${y}vw`}
                 r="1vw"
@@ -70,7 +70,7 @@ export default function Neuron({ x, y, fill, motionDelay, activation, showText =
                 variants={nodeAnimationProps}
                 animate={{ opacity: activation ** 2 }}
                 aria-hidden="true"
-            />
+            /> }
             <motion.circle
                 cx={`${x}vw`}
                 cy={`${y}vw`}
