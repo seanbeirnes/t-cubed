@@ -23,6 +23,7 @@ interface NeuronProps {
     motionDelay: number;
     activation: number;
     showText?: boolean;
+    emphasized?: boolean;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
 }
@@ -52,18 +53,18 @@ function getContrastColor(hex: string): string {
 }
 
 
-export default function Neuron({ x, y, fill, motionDelay, activation, showText = true, onMouseEnter, onMouseLeave }: NeuronProps) {
+export default function Neuron({ x, y, fill, motionDelay, activation, showText = true, emphasized = false, onMouseEnter, onMouseLeave }: NeuronProps) {
     return (
         <g
             aria-label={`Activation: ${activation.toFixed(2)}`}
             role="img"
         >
-            {activation > 0.5 && <motion.circle
+            {/* Only show the neuron if the activation is greater than 0.01 to cull number of nodes to animate */}
+            {activation > 0.01 && <motion.circle
                 cx={`${x}vw`}
                 cy={`${y}vw`}
                 r="1vw"
-                fill="#FFF"
-                className={`blur-xs transition-opacity`}
+                className={`blur-xs transition-opacity ${emphasized ? "fill-amber-400" : "fill-white"}`}
                 custom={motionDelay}
                 initial="hidden"
                 whileInView="visible"
@@ -76,8 +77,8 @@ export default function Neuron({ x, y, fill, motionDelay, activation, showText =
                 cy={`${y}vw`}
                 r="0.9vw"
                 fill={fill}
-                stroke="#FFF"
                 strokeWidth="0.1vw"
+                className={`${emphasized ? "stroke-amber-400" : "stroke-white"}`}
                 custom={motionDelay}
                 initial="hidden"
                 whileInView="visible"

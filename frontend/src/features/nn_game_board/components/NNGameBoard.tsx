@@ -1,20 +1,19 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
+
 import { ErrorMessage } from "../../../shared/components";
+import { NNGameStateContext } from "../../nn_game_controller";
+
 import BoardHeader from "./BoardHeader";
 import BoardGrid from "./BoardGrid";
 import BoardFrame from "./BoardFrame";
 import InfoBlurb from "./InfoBlurb";
+
 import { getWinningLine, validateBoardState, validateTokens } from "./utils";
-import type { GameToken } from "../../../shared/types";
 
-export interface NNGameBoardProps {
-    boardState: string[];
-    humanToken: GameToken;
-    aiToken: GameToken;
-}
+export default function NNGameBoard() {
+    const gameState = useContext(NNGameStateContext);
 
-export default function NNGameBoard({ boardState, humanToken, aiToken }: NNGameBoardProps) {
-    if (!validateBoardState(boardState) || !validateTokens(humanToken, aiToken)) {
+    if (!validateBoardState(gameState.boardState) || !validateTokens(gameState.humanToken, gameState.aiToken)) {
         return (
             <div className="flex flex-col items-center justify-center w-100 h-124 bg-slate-600/60 rounded-xl shadow-2xl">
                 <ErrorMessage />
@@ -22,17 +21,7 @@ export default function NNGameBoard({ boardState, humanToken, aiToken }: NNGameB
         );
     }
 
-    const [_, setHoveredCell] = useState<number | null>(null);
-
-    const handleCellHover = (cell: number | null) => {
-        if (cell !== null && (cell < 0 || cell > 8)) {
-            console.warn("Invalid cell index");
-            return;
-        }
-        setHoveredCell(cell);
-    };
-
-    const winningLine = getWinningLine(boardState as GameToken[]);
+    const winningLine = getWinningLine(gameState.boardState);
 
     return (
         <div
@@ -43,10 +32,10 @@ export default function NNGameBoard({ boardState, humanToken, aiToken }: NNGameB
             <div className="absolute -inset-10 bg-gradient-to-br from-slate-800 via-slate-600 to-slate-900" />
 
             <div className="relative p-4">
-                <BoardHeader humanToken={humanToken} aiToken={aiToken} />
+                <BoardHeader humanToken={gameState.humanToken} aiToken={gameState.aiToken} />
 
                 <BoardFrame ariaLabel="3 by 3 game board">
-                    <BoardGrid boardState={boardState as GameToken[]} winningLine={winningLine} onCellHover={handleCellHover} />
+                    <BoardGrid boardState={gameState.boardState} winningLine={winningLine} />
                 </BoardFrame>
 
                 <InfoBlurb />

@@ -1,12 +1,17 @@
+import { useContext, useState } from "react";
+
 import type { Layer, LayerType, NeuronFill } from "../types";
+import type { HoveredNeuron } from "../../nn_game_controller";
 import type { AppState } from "../../../shared/types";
 import { LAYER_TYPES, NEURON_FILLS } from "../types";
 
-import { useContext, useState } from "react";
 import { ChevronsUpDown, ChevronsDownUp, ArrowUp, ArrowDown } from "lucide-react";
+
+import { AppStateContext } from "../../../App";
+import { NNGameStateContext } from "../../nn_game_controller";
+import { NNHoverStateContext } from "../../nn_game_controller";
 import Neuron from "./Neuron";
 import Connection from "./Connection";
-import { AppStateContext } from "../../../App";
 import TransitionMask from "./TransitionMask";
 
 const PADDING: number = 2;
@@ -17,8 +22,6 @@ const WINDOW_WIDTH_THRESHOLD: number = 768;
 
 interface NNAnimationPanelProps {
     width: number;
-    network: Layer[];
-    boardState: string[];
 }
 
 export type Config = {
@@ -34,10 +37,6 @@ export type Config = {
     innerHeight: number;
 }
 
-type HoveredNeuron = {
-    layerIndex: number,
-    neuronIndex: number
-} | null;
 
 function getConfig(width: number, network: Layer[]): Config {
     const height: number = (NEURON_WIDTH + LAYER_MARGIN) * network.length;
@@ -138,21 +137,23 @@ function isHoveredNeuronInInputLayerPlayer2(hoveredNeuron: HoveredNeuron | null)
     return hoveredNeuron !== null && hoveredNeuron.layerIndex === 0 && hoveredNeuron.neuronIndex >= 9;
 }
 
-export default function NNAnimationPanel({ width, network }: NNAnimationPanelProps) {
+export default function NNAnimationPanel({ width }: NNAnimationPanelProps) {
     const appState: AppState = useContext(AppStateContext);
+    const gameState = useContext(NNGameStateContext);
+    const hoverState = useContext(NNHoverStateContext);
     const showNeuronText: boolean = appState.window.width > WINDOW_WIDTH_THRESHOLD;
 
-    const config: Config = getConfig(width, network);
+    const config: Config = getConfig(width, gameState.network);
 
     const offsetOpen: number = 0;
     const offsetClosed: number = -(config.totalLayers - 1) * (config.neuronWidth + config.layerSpacing);
     const [offset, setOffset]: [number, React.Dispatch<React.SetStateAction<number>>] = useState(offsetClosed);
     const [expanded, setExpanded] = useState(false);
     const [expandedCount, setExpandedCount] = useState(0);
-    const [hoveredNeuron, setHoveredNeuron] = useState<HoveredNeuron>(null);
 
     const handleNeuronHover = (hoveredNeuron: HoveredNeuron | null) => {
-        setHoveredNeuron(hoveredNeuron);
+        if (hoverState.setHoveredNeuron === null) return;
+        hoverState.setHoveredNeuron(hoveredNeuron);
     };
 
     const toggleExpanded = () => {
@@ -160,6 +161,20 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
         setExpanded(!expanded);
         setExpandedCount(expandedCount + 1);
     };
+
+    // Determines whether a neuron should be highlighted
+    const isEmphasized = (layerIndex: number, neuronIndex: number) => {
+        // We only want to highlight input and output layer neurons
+        if (layerIndex > 0 && layerIndex < config.totalLayers - 1) return false;
+
+        // If the user is hovering a game board cell, highlight the corresponding neuron
+        const hasHoveredCell = hoverState.hoveredCell !== null && neuronIndex % 9 === hoverState.hoveredCell;
+
+        // If this is the currently hovered neuron, highlight it
+        const isHoveredNeuron = hoverState.hoveredNeuron !== null && hoverState.hoveredNeuron.layerIndex === layerIndex && hoverState.hoveredNeuron.neuronIndex === neuronIndex;
+
+        return hasHoveredCell || isHoveredNeuron;
+    }
 
     /*
      * Handles the click event on the panel. If the window is larger than the threshold, users must click the button.
@@ -204,7 +219,7 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
                 >
                     {expanded ? <ChevronsDownUp className="w-full h-full" /> : <ChevronsUpDown className="w-full h-full" />}
                 </button>
-                <p className={`group ${isHoveredNeuronInInputLayerPlayer1(hoveredNeuron) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 col-span-1 md:col-span-3 justify-self-end flex justify-around items-center text-green-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-green-900`}
+                <p className={`group ${isHoveredNeuronInInputLayerPlayer1(hoverState.hoveredNeuron) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 col-span-1 md:col-span-3 justify-self-end flex justify-around items-center text-green-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-green-900`}
                     style={{
                         fontSize: "1.75vw",
                         width: "24vw",
@@ -218,7 +233,7 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
                         aria-hidden="true"
                     />
                 </p>
-                <p className={`group ${isHoveredNeuronInInputLayerPlayer2(hoveredNeuron) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 col-span-1 md:col-span-3 justify-self-start flex justify-around items-center text-blue-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-blue-900`}
+                <p className={`group ${isHoveredNeuronInInputLayerPlayer2(hoverState.hoveredNeuron) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 col-span-1 md:col-span-3 justify-self-start flex justify-around items-center text-blue-400 font-bold outline-2 outline-slate-500 rounded-full shadow-inner text-shadow-md text-shadow-blue-900`}
                     style={{
                         fontSize: "1.75vw",
                         width: "24vw",
@@ -235,10 +250,10 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
             </div>
             <svg aria-label="Neural network diagram" width={`${config.innerWidth}vw`} height={`${config.innerHeight}vw`}>
                 {/* Render the connections between neurons first so they are behind the neurons */}
-                {network.map((layer, i) => {
-                    if (i === network.length - 1) return null; // last layer has no outgoing connections
+                {gameState.network.map((layer, i) => {
+                    if (i === gameState.network.length - 1) return null; // last layer has no outgoing connections
 
-                    const nextLayer = network[i + 1];
+                    const nextLayer = gameState.network[i + 1];
 
                     return Array.from({ length: layer.size }).flatMap((_, j) => {
                         const x1 = getNeuronX(j, layer.size, config);
@@ -277,7 +292,7 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
 
                 {/* Render the neurons for each layer */}
                 {
-                    network.map((layer, i) => {
+                    gameState.network.map((layer, i) => {
                         const layerType: LayerType = getLayerType(i, config.totalLayers);
                         return (
                             <g key={`layer-${i}`} role="treeitem" aria-label={getLayerAltText(i, layerType)}>
@@ -293,6 +308,7 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
                                                 motionDelay={getMotionDelay(i, j)}
                                                 activation={activation}
                                                 showText={showNeuronText}
+                                                emphasized={isEmphasized(i, j)}
                                                 onMouseEnter={() => handleNeuronHover({ layerIndex: i, neuronIndex: j })}
                                                 onMouseLeave={() => handleNeuronHover(null)}
                                             />
@@ -305,7 +321,7 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
                 }
             </svg>
             {/* This section is animated when the output layer is hovered over */}
-            <div className={`group ${isHoveredNeuronInOutputLayer(hoveredNeuron, config) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 flex flex-row justify-center items-center gap-[1vw] text-amber-400 font-bold text-shadow-md text-shadow-amber-900`}>
+            <div className={`group ${isHoveredNeuronInOutputLayer(hoverState.hoveredNeuron, config) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 flex flex-row justify-center items-center gap-[1vw] text-amber-400 font-bold text-shadow-md text-shadow-amber-900`}>
                 <ArrowUp className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-pulse" 
                     aria-hidden="true" />
                 <span

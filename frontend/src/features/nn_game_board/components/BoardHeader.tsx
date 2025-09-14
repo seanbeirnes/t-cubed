@@ -1,9 +1,21 @@
+import type { GameToken } from "../../../shared/types";
+import { GAME_TOKENS } from "../../../shared/types";
+
 interface BoardHeaderProps {
-  humanToken: "X" | "O";
-  aiToken: "X" | "O";
+  humanToken: GameToken;
+  aiToken: GameToken;
 }
 
 export function BoardHeader({ humanToken, aiToken }: BoardHeaderProps) {
+    if (humanToken === aiToken) {
+        console.warn("Human and AI tokens are the same");
+        return null;
+    }
+    if (humanToken === GAME_TOKENS.EMPTY || aiToken === GAME_TOKENS.EMPTY) {
+        console.warn("Human or AI token is empty");
+        return null;
+    }
+
   return (
     <div className="flex items-center justify-between mb-2">
       <h2 className="text-amber-400 font-semibold tracking-wide text-sm md:text-base drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]">
