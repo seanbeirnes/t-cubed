@@ -15,7 +15,7 @@ function Index() {
                         Welcome to T<sup>3</sup>
                     </h1>
                     <p className="text-slate-200 text-base md:text-lg text-left">
-                        Tic-Tac-Toe, reimagined — play a friend, challenge Minimax, or experience a neural network with beautiful live animations.
+                        Tic-Tac-Toe, reimagined — play a friend, challenge Minimax, or experience a <span className="text-amber-400 drop-shadow">neural network</span> with beautiful live animations as you play against it!
                     </p>
                 </header>
 
