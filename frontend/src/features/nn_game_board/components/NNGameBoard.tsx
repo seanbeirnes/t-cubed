@@ -25,7 +25,7 @@ export default function NNGameBoard() {
 
     return (
         <div
-            className="relative w-82 md:w-102 h-103 md:h-120 rounded-2xl shadow-xl hover:shadow-md transition-shadow overflow-hidden"
+            className="relative w-82 md:w-102 h-103 md:h-120 rounded-2xl shadow-xl overflow-hidden"
             aria-label="Tic Tac Toe game board"
             role="region"
         >
