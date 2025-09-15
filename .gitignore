@@ -1,5 +1,11 @@
 ### Custom ###
 /tmp
+/logs
+
+.env
+.env.dev
+.env.prod
+.env.secret
 
 ### Go ###
 # If you prefer the allow list template instead of the deny list, see community template:
