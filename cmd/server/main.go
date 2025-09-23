@@ -4,10 +4,13 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"context"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 func main() {
@@ -46,6 +49,21 @@ func main() {
 	} else {
 		slog.Info("Found GIN_MODE environment variable.", "value", GIN_MODE)
 	}
+	DATABASE_URL := os.Getenv("DATABASE_URL")
+	if DATABASE_URL == "" {
+		slog.Error("No DATABASE_URL environment variable found. Exiting...")
+		return
+	}
+	
+	// Connect to database
+	conn, err := pgx.Connect(context.Background(), DATABASE_URL)
+	if err != nil {
+		slog.Error("Could not connect to database", "error", err)
+		return
+	}
+	defer conn.Close(context.Background())
+	slog.Info("Database connection successful.")
+
 
 	// Set up gin
 	gin.SetMode(GIN_MODE)
@@ -66,6 +84,32 @@ func main() {
 			"message": "index",
 		})
 	})
+
+	{
+		apiV1 := router.Group("/api/v1")
+		apiV1.POST("/game", func(c *gin.Context) {
+			id := uuid.New()
+			c.JSON(http.StatusOK, gin.H{
+				"message":"this is the endpoint for creating a game",
+				"id":id,
+			})
+		})
+		apiV1.GET("/game/:id", func(c *gin.Context) {
+			id := c.Param("id")
+			c.JSON(http.StatusOK, gin.H{
+				"message":"this is the endpoint for getting a game state",
+				"id":id,
+			})
+		})
+		apiV1.POST("/game/:id", func(c *gin.Context) {
+			id := c.Param("id")
+			c.JSON(http.StatusOK, gin.H{
+				"message":"this is the endpoint for updating a game state",
+				"id":id,
+			})
+		})
+
+	}
 
 	// Start server
 	router.Run(":" + PORT)
