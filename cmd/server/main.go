@@ -1,16 +1,16 @@
 package main
 
 import (
+	"context"
 	"io"
 	"log/slog"
-	"net/http"
-	"context"
 	"os"
 
+	"t-cubed/internal/server"
+
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -54,7 +54,7 @@ func main() {
 		slog.Error("No DATABASE_URL environment variable found. Exiting...")
 		return
 	}
-	
+
 	// Connect to database
 	conn, err := pgx.Connect(context.Background(), DATABASE_URL)
 	if err != nil {
@@ -64,8 +64,7 @@ func main() {
 	defer conn.Close(context.Background())
 	slog.Info("Database connection successful.")
 
-
-	// Set up gin
+	// Set up server and routes
 	gin.SetMode(GIN_MODE)
 	file, err = os.OpenFile("logs/requests.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
@@ -75,42 +74,13 @@ func main() {
 	defer file.Close()
 	gin.DefaultWriter = io.MultiWriter(os.Stdout, file)
 
-	router := gin.Default()
-	router.SetTrustedProxies(nil)
-	router.TrustedPlatform = gin.PlatformFlyIO
+	engine := gin.Default()
+	engine.SetTrustedProxies(nil)
+	engine.TrustedPlatform = gin.PlatformFlyIO
 
-	router.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "index",
-		})
-	})
-
-	{
-		apiV1 := router.Group("/api/v1")
-		apiV1.POST("/game", func(c *gin.Context) {
-			id := uuid.New()
-			c.JSON(http.StatusOK, gin.H{
-				"message":"this is the endpoint for creating a game",
-				"id":id,
-			})
-		})
-		apiV1.GET("/game/:id", func(c *gin.Context) {
-			id := c.Param("id")
-			c.JSON(http.StatusOK, gin.H{
-				"message":"this is the endpoint for getting a game state",
-				"id":id,
-			})
-		})
-		apiV1.POST("/game/:id", func(c *gin.Context) {
-			id := c.Param("id")
-			c.JSON(http.StatusOK, gin.H{
-				"message":"this is the endpoint for updating a game state",
-				"id":id,
-			})
-		})
-
-	}
+	router := server.NewRouter(engine, conn)
+	router.Route()
 
 	// Start server
-	router.Run(":" + PORT)
+	engine.Run(":" + PORT)
 }
