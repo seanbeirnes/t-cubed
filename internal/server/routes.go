@@ -1,13 +1,15 @@
 package server
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 func (r *Router) Route() {
+	gameController := NewGameController(r.dbConn)
+
 	// Index
 	r.engine.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -19,11 +21,24 @@ func (r *Router) Route() {
 	{
 		apiV1 := r.engine.Group("/api/v1")
 		apiV1.POST("/game", func(c *gin.Context) {
-			id := uuid.New()
-			c.JSON(http.StatusOK, gin.H{
-				"message": "this is the endpoint for creating a game",
-				"id":      id,
-			})
+			newGameRequest := NewGameRequest{}
+			err := c.ShouldBindBodyWithJSON(&newGameRequest)
+			if err != nil {
+				slog.Warn("Invalid request", "error", err)
+				c.JSON(http.StatusBadRequest, gin.H{
+					"message": "invalid request",
+				})
+				return
+			}
+			game, err := gameController.CreateGame(newGameRequest)
+			if err != nil {
+				slog.Warn("Internal server error", "error", err)
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"message": "internal server error",
+				})
+				return
+			}
+			c.JSON(http.StatusOK, &game)
 		})
 		apiV1.GET("/game/:id", func(c *gin.Context) {
 			id := c.Param("id")
