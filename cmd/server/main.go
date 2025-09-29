@@ -1,15 +1,16 @@
 package main
 
 import (
-	"context"
 	"io"
 	"log/slog"
 	"os"
 
-	"t-cubed/internal/server"
+	"t-cubed/internal/db"
+	"t-cubed/internal/handler"
+	"t-cubed/internal/repo"
+	"t-cubed/internal/router"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
 )
 
@@ -56,13 +57,16 @@ func main() {
 	}
 
 	// Connect to database
-	conn, err := pgx.Connect(context.Background(), DATABASE_URL)
+	db := db.NewPostgresDB(DATABASE_URL)
+	err = db.Connect()
 	if err != nil {
 		slog.Error("Could not connect to database", "error", err)
 		return
 	}
-	defer conn.Close(context.Background())
-	slog.Info("Database connection successful.")
+	defer db.Close()
+	
+	// Create handlers and repositories
+	gameHandler := handler.NewGameHandler(repo.NewGameRepoPostgres(db))
 
 	// Set up server and routes
 	gin.SetMode(GIN_MODE)
@@ -78,7 +82,7 @@ func main() {
 	engine.SetTrustedProxies(nil)
 	engine.TrustedPlatform = gin.PlatformFlyIO
 
-	router := server.NewRouter(engine, conn)
+	router := router.NewRouter(engine, gameHandler)
 	router.Route()
 
 	// Start server
