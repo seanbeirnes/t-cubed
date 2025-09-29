@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/hex"
 	"strconv"
 	"t-cubed/internal/repo"
 
@@ -23,6 +24,16 @@ type NewGameRequest struct {
 	Player1Piece string `json:"player_1_piece"`
 	Player2Piece string `json:"player_2_piece"`
 	NextPlayerID string `json:"next_player_id"`
+}
+
+type GameResponse struct {
+	UUID         string `json:"uuid"`
+	Name         string `json:"name"`
+	GameType     string `json:"game_type"`
+	BoardState   string `json:"board_state"`
+	NextPlayerID int    `json:"next_player_id"`
+	Player1Piece string `json:"player_1_piece"`
+	Player2Piece string `json:"player_2_piece"`
 }
 
 func (h *GameHandler) CreateGame(c *gin.Context) {
@@ -55,5 +66,15 @@ func (h *GameHandler) CreateGame(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, game)
+	gameResponse := GameResponse{
+		UUID:         game.UUID,
+		Name:         game.Name,
+		GameType:     game.GameType,
+		BoardState:   hex.EncodeToString(game.BoardState),
+		NextPlayerID: game.NextPlayerID,
+		Player1Piece: game.Player1Piece,
+		Player2Piece: game.Player2Piece,
+	}
+
+	c.JSON(200, gameResponse)
 }
