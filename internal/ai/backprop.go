@@ -25,7 +25,7 @@ type TrainingExample struct {
 }
 
 type trainingNetwork struct {
-	network *network
+	network *Network
 
 	layerCaches []*layerCache
 	deltaCache  [][]float64
@@ -35,7 +35,7 @@ type trainingNetwork struct {
 	forwardCalled bool
 }
 
-func (n *network) Train(trainingConfig *TrainingConfig) error {
+func (n *Network) Train(trainingConfig *TrainingConfig) error {
 	path := filepath.Clean(trainingConfig.ExamplesDir)
 	files, err := os.ReadDir(path)
 	if err != nil {
@@ -131,7 +131,7 @@ func crossEntropyLoss(predicted, target []float64) float64 {
 	return -loss
 }
 
-func newTrainingNetwork(network *network) *trainingNetwork {
+func newTrainingNetwork(network *Network) *trainingNetwork {
 	numLayers := len(network.Layers)
 
 	layerCaches := make([]*layerCache, numLayers)
