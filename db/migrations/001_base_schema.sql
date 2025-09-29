@@ -19,7 +19,8 @@ CREATE TABLE game (
     board_state BYTEA CHECK (octet_length(board_state)=4) DEFAULT '\000\000\000\000',
     next_player_id SMALLINT NOT NULL CHECK (next_player_id=1 OR next_player_id=2),
     player_1_piece piece_type NOT NULL,
-    player_2_piece piece_type NOT NULL
+    player_2_piece piece_type NOT NULL,
+    ai_player_id SMALLINT DEFAULT 0
 );
 
 INSERT INTO game_type (label) 

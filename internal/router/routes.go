@@ -27,13 +27,6 @@ func (r *Router) Route() {
 				"id":      id,
 			})
 		})
-		apiV1.POST("/game/:id", func(c *gin.Context) {
-			id := c.Param("id")
-			c.JSON(http.StatusOK, gin.H{
-				"message": "this is the endpoint for updating a game state",
-				"id":      id,
-			})
-		})
-
+		apiV1.POST("/game/:id/nn", r.gameHandler.PlayNNMove)
 	}
 }

@@ -12,6 +12,7 @@ type Game struct {
 	GameType     string    
 	BoardState   []byte    
 	NextPlayerID int       
+	AIPlayerID   int
 	Player1Piece string    
 	Player2Piece string    
 }

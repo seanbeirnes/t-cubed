@@ -12,7 +12,7 @@ import (
 )
 
 type GameRepo interface {
-	CreateGame(name string, gameType string, player1Piece string, player2Piece string, nextPlayerID int) (*model.Game, error)
+	CreateGame(name string, gameType string, player1Piece string, player2Piece string, nextPlayerID int, aiPlayerID int) (*model.Game, error)
 	GetGame(uuid string) (*model.Game, error)
 }
 
@@ -24,7 +24,7 @@ func NewGameRepoPostgres(database *db.PostgresDB) GameRepo {
 	return &GameRepoPostgres{db: database}
 }
 
-func (r *GameRepoPostgres) CreateGame(name string, gameType string, player1Piece string, player2Piece string, nextPlayerID int) (*model.Game, error) {
+func (r *GameRepoPostgres) CreateGame(name string, gameType string, player1Piece string, player2Piece string, nextPlayerID int, aiPlayerID int) (*model.Game, error) {
 	if player1Piece != "X" && player2Piece != "X" {
 		return nil, errors.New("One player must be 'X'")
 	}
@@ -37,6 +37,9 @@ func (r *GameRepoPostgres) CreateGame(name string, gameType string, player1Piece
 	if nextPlayerID < 1 || nextPlayerID > 2 {
 		return nil, errors.New("Invalid next player id")
 	}
+	if aiPlayerID < 0 || aiPlayerID > 2 {
+		return nil, errors.New("Invalid AI player id. Must be 0 (no AI), 1 (player 1), or 2 (player 2)")
+	}
 
 	var game model.Game
 	var err error
@@ -47,12 +50,12 @@ func (r *GameRepoPostgres) CreateGame(name string, gameType string, player1Piece
 		WITH gt AS (
 			SELECT id FROM game_type WHERE label = $3
 		)
-		INSERT INTO game (uuid, name, game_type_id, next_player_id, player_1_piece, player_2_piece)
-		SELECT $1, $2, gt.id, $4, $5, $6
+		INSERT INTO game (uuid, name, game_type_id, next_player_id, ai_player_id, player_1_piece, player_2_piece)
+		SELECT $1, $2, gt.id, $4, $5, $6, $7
 		FROM gt
 		RETURNING uuid, name, created_at, updated_at, 
 			(SELECT label FROM game_type WHERE id = game_type_id) AS game_type, 
-			board_state, next_player_id, player_1_piece, player_2_piece
+			board_state, next_player_id, ai_player_id, player_1_piece, player_2_piece
 		`
 	row := r.db.Connection.QueryRow(
 		context.Background(),
@@ -61,6 +64,7 @@ func (r *GameRepoPostgres) CreateGame(name string, gameType string, player1Piece
 		name,
 		gameType,
 		nextPlayerID,
+		aiPlayerID,
 		player1Piece,
 		player2Piece,
 	)
@@ -73,6 +77,7 @@ func (r *GameRepoPostgres) CreateGame(name string, gameType string, player1Piece
 		&game.GameType,
 		&game.BoardState,
 		&game.NextPlayerID,
+		&game.AIPlayerID,
 		&game.Player1Piece,
 		&game.Player2Piece,
 	)
@@ -90,7 +95,7 @@ func (r *GameRepoPostgres) GetGame(uuid string) (*model.Game, error) {
 	query := `
 		SELECT uuid, name, created_at, updated_at, 
 			(SELECT label FROM game_type WHERE id = game_type_id) AS game_type, 
-			board_state, next_player_id, player_1_piece, player_2_piece
+			board_state, next_player_id, ai_player_id, player_1_piece, player_2_piece
 		FROM game
 		WHERE uuid = $1
 		`
@@ -108,6 +113,7 @@ func (r *GameRepoPostgres) GetGame(uuid string) (*model.Game, error) {
 		&game.GameType,
 		&game.BoardState,
 		&game.NextPlayerID,
+		&game.AIPlayerID,
 		&game.Player1Piece,
 		&game.Player2Piece,
 	)
