@@ -15,4 +15,5 @@ type Game struct {
 	AIPlayerID   int
 	Player1Piece string    
 	Player2Piece string    
+	TerminalState int
 }
