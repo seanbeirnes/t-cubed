@@ -5,7 +5,6 @@
 - [Go](https://go.dev/doc/install)
 - [PostgreSQL](https://www.postgresql.org/download/) or compatible serverless version
 - [Docker](https://docs.docker.com/get-docker/)
-- [Goose](https://github.com/pressly/goose)
 
 ## Installation
 
@@ -15,16 +14,32 @@
 git clone https://github.com/seanbeirnes/t-cubed.git
 ```
 
-1. Install the dependencies
+2. Install the dependencies
 
 ```bash
-go mod download
+make setup
 ```
 
-1. Create .env files based on the examples in the `doc` directory.
+3. Update the .env files with secrets and details.
 
-1. Run the database migrations
+4. Run the database migrations
 
 ```bash
 goose -env .env.db up
 ```
+
+5. Build
+```bash
+make build
+```
+
+## Running separate services
+The server and frontend can be run separately and automatically rebuilt when changes are made.
+This is done with a watch script for the Go server and Vite for the frontend.
+
+### Building the server
+Use `make watch` to automatically rebuild the server when changes are made.
+The API will be available at `http://localhost:8080/api/v1`.
+
+### Building the frontend
+Use `cd frontend && npm run dev` to start the Vite development server and watch for changes.
