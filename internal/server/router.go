@@ -46,14 +46,7 @@ func applyRoutes(config *Config, engine *gin.Engine, handler *handler.Handler) {
 	{
 		apiV1 := engine.Group("/api/v1")
 		apiV1.POST("/game", handler.CreateGame)
-
-		apiV1.GET("/game/:id", func(c *gin.Context) {
-			id := c.Param("id")
-			c.JSON(http.StatusOK, gin.H{
-				"message": "this is the endpoint for getting a game state",
-				"id":      id,
-			})
-		})
+		apiV1.GET("/game/:uuid", handler.GetGame)
 		apiV1.POST("/game/:uuid/nn", handler.PlayNNMove)
 	}
 }
