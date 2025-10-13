@@ -125,6 +125,7 @@ type NNMoveResult struct {
 	Trace *ai.ForwardTrace `json:"trace"`
 }
 
+// Plays a Neural Network move
 func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID int16, position uint8) (*NNMoveResult, error) {
 	game, err := s.repo.GetGameByUUID(ctx, uuid)
 	if err != nil {
@@ -199,7 +200,7 @@ func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID i
 		}, nil
 	}
 
-	// Otherwise, play the AI move and respond
+	// Otherwise, play the AI (neural network) move and respond
 	input := gameState.GetBoardAsNetworkInput()
 	trace := new(ai.ForwardTrace)
 	output, err := s.neuralNet.Forward(input, trace)
@@ -248,6 +249,106 @@ func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID i
 		Game:  &game,
 		Trace: trace,
 	}, nil
+}
+
+// Plays Minimax move
+func (s *GameService) PlayMMMove(ctx context.Context, uuid uuid.UUID, playerID int16, position uint8) (*Game, error) {
+	game, err := s.repo.GetGameByUUID(ctx, uuid)
+	if err != nil {
+		slog.Error("Could not get game from DB", "error", err)
+		return nil, err
+	}
+
+	if !isValidPlayerID(playerID) {
+		return nil, errors.New("invalid player ID")
+	}
+	if !isValidPosition(position) {
+		return nil, errors.New("invalid position")
+	}
+
+	if game.TerminalState != engine.TERM_NOT {
+		return nil, errors.New("cannot play move on a finished game")
+	}
+	if game.GameTypeID != s.cachedGameTypesMap[GAME_TYPE_MINIMAX] {
+		return nil, errors.New("game type must be minimax")
+	}
+	if playerID != 1 {
+		return nil, errors.New("human player ID must be 1")
+	}
+	if playerID != game.NextPlayerID {
+		return nil, errors.New("player ID does not match next player ID")
+	}
+
+	gameStateOptions := &engine.GameStateOptions{
+		Player1Piece:  pieceToByte(game.Player1Piece),
+		Player2Piece:  pieceToByte(game.Player2Piece),
+		FirstPlayerId: uint8(game.NextPlayerID),
+	}
+	gameState, err := engine.NewGameState(gameStateOptions)
+	if err != nil {
+		slog.Error("Could not create game state", "uuid", game.Uuid, "error", err)
+		return nil, err
+	}
+	// Set the board state based on persisted data
+	p1Board, p2Board := engine.UnpackBoard(game.BoardState)
+	gameState.Board.P1Board = p1Board
+	gameState.Board.P2Board = p2Board
+
+	// Play the move, update the game state, and respond if the game is over
+	ok, err := gameState.Move(position)
+	if err != nil {
+		slog.Error("Could not play move", "uuid", game.Uuid, "error", err)
+		return nil, err
+	}
+	if !ok {
+		slog.Warn("Could not play move", "uuid", game.Uuid, "position", position)
+		return nil, errors.New("invalid move")
+	}
+
+	updateGameParams := repository.UpdateGameParams{
+		Name:          game.Name,
+		NextPlayerID:  int16(gameState.GetCurrentPlayerId()),
+		BoardState:    gameState.GetBoardAsByteArray(),
+		TerminalState: int16(gameState.TerminalState),
+		Uuid:          game.Uuid,
+	}
+	game, err = s.repo.UpdateGame(ctx, updateGameParams)
+	if err != nil {
+		slog.Warn("Failed to write updated game state to database", "uuid", uuid, "error", err)
+		return nil, err
+	}
+
+	// If the game is over, return the game without a neural network trace
+	if gameState.IsTerminal() {
+		return &game, nil
+	}
+
+	// Otherwise, play the AI (minimax) move and respond
+	bestMove := ai.BestMove(gameState.Board)
+	ok, err = gameState.Move(bestMove)
+	if err != nil {
+		slog.Error("Could not play move", "uuid", game.Uuid, "error", err)
+		return nil, err
+	}
+	if !ok {
+		slog.Warn("Could not play move", "uuid", game.Uuid, "position", position)
+		return nil, errors.New("invalid move")
+	}
+
+	updateGameParams = repository.UpdateGameParams{
+		Name:          game.Name,
+		NextPlayerID:  int16(gameState.GetCurrentPlayerId()),
+		BoardState:    gameState.GetBoardAsByteArray(),
+		TerminalState: int16(gameState.TerminalState),
+		Uuid:          game.Uuid,
+	}
+	game, err = s.repo.UpdateGame(ctx, updateGameParams)
+	if err != nil {
+		slog.Warn("Failed to write updated game state to database", "uuid", uuid, "error", err)
+		return nil, err
+	}
+
+	return &game, nil
 }
 
 // Utility function to convert a piece string to a byte

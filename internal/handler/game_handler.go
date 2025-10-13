@@ -98,6 +98,7 @@ type ResNNMove struct {
 	Trace *service.NNMoveTrace `json:"trace"`
 }
 
+// Plays Neural Network move
 func (h *Handler) PlayNNMove(c *gin.Context) {
 	req := ReqNNMove{}
 
@@ -154,6 +155,72 @@ func (h *Handler) PlayNNMove(c *gin.Context) {
 
 	if result.Trace != nil {
 		response.Trace = result.Trace
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+type ReqMMMove struct {
+	PlayerID string `json:"player_id"`
+	Position string `json:"position"`
+}
+
+type ResMMMove struct {
+	Game  *ResGame             `json:"game"`
+}
+
+// Plays Minimax move
+func (h *Handler) PlayMMMove(c *gin.Context) {
+	req := ReqMMMove{}
+
+	uuidParam := c.Param("uuid")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{})
+		return
+	}
+
+	uuid, err := uuid.Parse(uuidParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{})
+		return
+	}
+	parsedPlayerID, err := strconv.ParseInt(req.PlayerID, 10, 16)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{})
+		return
+	}
+	playerID := int16(parsedPlayerID)
+	if playerID != 1 {
+		c.JSON(http.StatusBadRequest, gin.H{})
+		return
+	}
+
+	parsedPosition, err := strconv.ParseInt(req.Position, 10, 16)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{})
+		return
+	}
+	position := uint8(parsedPosition)
+
+	result, err := h.gameService.PlayMMMove(c.Request.Context(), uuid, playerID, position)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	response := ResMMMove{
+		Game: &ResGame{
+			UUID:          result.Uuid.String(),
+			Name:          result.Name,
+			GameType:      h.gameService.GetGameTypeLabel(result.GameTypeID),
+			BoardState:    hex.EncodeToString(result.BoardState),
+			NextPlayerID:  result.NextPlayerID,
+			Player1Piece:  result.Player1Piece,
+			Player2Piece:  result.Player2Piece,
+			TerminalState: result.TerminalState,
+		},
 	}
 
 	c.JSON(http.StatusOK, response)
