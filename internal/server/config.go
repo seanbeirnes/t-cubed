@@ -4,17 +4,20 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	DB *pgxpool.Pool
 	routerLogFile *os.File
+	DEV_MODE bool
 	PORT string
+	CORS_ORIGINS []string
 	GIN_MODE string
+	DB *pgxpool.Pool
 }
 
 // Loads environment variables and establishes a db connection
@@ -25,6 +28,12 @@ func newConfig() *Config {
 	if err != nil {
 		slog.Error("Could not load .env file", "error", err)
 	}
+	DEV_MODE := false
+	devMode := os.Getenv("DEV_MODE")
+	if strings.ToLower(devMode) == "true" {
+		slog.Info("DEV_MODE environment variable found.", "value", devMode)
+		DEV_MODE = true
+	}
 	PORT := os.Getenv("PORT")
 	if PORT == "" {
 		PORT = "8080"
@@ -32,6 +41,12 @@ func newConfig() *Config {
 	} else {
 		slog.Info("Found PORT environment variable.", "value", PORT)
 	}
+	tmpCorsOrigins := os.Getenv("CORS_ORIGINS")
+	if tmpCorsOrigins == "" {
+		slog.Warn("No CORS_ORIGINS environment variable found. Exiting...")
+		panic(1)
+	}
+	CORS_ORIGINS := strings.Split(tmpCorsOrigins, ", ")
 	GIN_MODE := os.Getenv("GIN_MODE")
 	if GIN_MODE == "" {
 		GIN_MODE = gin.ReleaseMode
@@ -65,10 +80,12 @@ func newConfig() *Config {
 	}
 
 	return &Config{
-		DB: pool,
 		routerLogFile: routerLogFile,
+		DEV_MODE: DEV_MODE,
 		PORT: PORT,
+		CORS_ORIGINS: CORS_ORIGINS,
 		GIN_MODE: GIN_MODE,
+		DB: pool,
 	}
 }
 

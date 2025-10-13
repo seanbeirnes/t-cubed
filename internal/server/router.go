@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"t-cubed/internal/handler"
+	"t-cubed/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,12 +20,21 @@ func newRouter(config *Config) *gin.Engine {
 	engine.TrustedPlatform = gin.PlatformFlyIO
 
 	handler := handler.NewHandler(config.DB)
-	applyRoutes(engine, handler)
+	applyRoutes(config, engine, handler)
 
-	return engine	
+	return engine
 }
 
-func applyRoutes(engine *gin.Engine, handler *handler.Handler) {
+func applyRoutes(config *Config, engine *gin.Engine, handler *handler.Handler) {
+	// Middleware for all routes
+	engine.Use(
+		middleware.NewCors(config.CORS_ORIGINS),
+		middleware.NewSecure(config.DEV_MODE),
+		middleware.NewGzip(),
+		middleware.NewRequestID(),
+		middleware.NewRateLimiter(),
+	)
+
 	// Index
 	engine.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
