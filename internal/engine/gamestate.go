@@ -162,3 +162,6 @@ func unpackBoardBigEndian(b []byte) (uint16, uint16) {
     return p1, p2
 }
 
+func UnpackBoard(b []byte) (uint16, uint16) {
+	return unpackBoardBigEndian(b)
+}

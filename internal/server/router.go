@@ -54,6 +54,6 @@ func applyRoutes(config *Config, engine *gin.Engine, handler *handler.Handler) {
 				"id":      id,
 			})
 		})
-		// apiV1.POST("/game/:id/nn", gameHandler.PlayNNMove)
+		apiV1.POST("/game/:uuid/nn", handler.PlayNNMove)
 	}
 }
