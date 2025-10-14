@@ -181,7 +181,7 @@ func TestSaveAndLoadNetwork(t *testing.T) {
 	l1.Weights[2][0], l1.Weights[2][1] = 0.3, 0.4
 	l1.Biases[0], l1.Biases[1] = 0.05, -0.05
 
-	n := &network{Layers: []*layer{l0, l1}}
+	n := &Network{Layers: []*layer{l0, l1}}
 
 	// save to temp file
 	fname := "./ffnn_save_test.json"
@@ -263,7 +263,7 @@ func TestSaveAndLoadNetwork(t *testing.T) {
 
 func TestForward_TraceRecording(t *testing.T) {
 	// Build a deterministic network: 2 inputs -> 2 hidden -> 2 outputs
-	n := &network{
+	n := &Network{
 		Layers: []*layer{
 			{
 				Input:   2,

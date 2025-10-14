@@ -22,7 +22,7 @@ type layerCache struct {
 	Zs []float64
 }
 
-type network struct {
+type Network struct {
 	Layers []*layer `json:"layers"`
 }
 
@@ -32,7 +32,7 @@ type ForwardTrace struct {
 
 // Creates a new feed-forward neural network where x1, x2, ..., xn are the neuron counts for each layer.
 // The first layer is the input layer, and the last layer is the output layer.
-func NewNetwork(neurons ...int) (*network, error) {
+func NewNetwork(neurons ...int) (*Network, error) {
 	if len(neurons) < 2 {
 		return nil, errors.New("At least 2 neurons required")
 	}
@@ -47,14 +47,14 @@ func NewNetwork(neurons ...int) (*network, error) {
 
 	}
 
-	n := &network{Layers: layers}
+	n := &Network{Layers: layers}
 	n.randomizeWeights()
 
 	return n, nil
 }
 
 // Randomizes the weights of the network.
-func (n *network) randomizeWeights() {
+func (n *Network) randomizeWeights() {
 	for _, layer := range n.Layers {
 		for i := 0; i < layer.Input; i++ {
 			for j := 0; j < layer.Output; j++ {
@@ -65,13 +65,13 @@ func (n *network) randomizeWeights() {
 }
 
 // Loads a FFNN config from a JSON file
-func LoadNetwork(fpath string) (*network, error) {
+func LoadNetwork(fpath string) (*Network, error) {
 	fpath = filepath.Clean(fpath)
 	data, err := os.ReadFile(fpath)
 	if err != nil {
 		return nil, err
 	}
-	var network network
+	var network Network
 	if err := json.Unmarshal(data, &network); err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func LoadNetwork(fpath string) (*network, error) {
 }
 
 // Saves a FFNN config to a JSON file
-func SaveNetwork(fpath string, n *network) error {
+func SaveNetwork(fpath string, n *Network) error {
 	fpath = filepath.Clean(fpath)
 	data, err := json.Marshal(n)
 	if err != nil {
@@ -89,7 +89,7 @@ func SaveNetwork(fpath string, n *network) error {
 }
 
 // Forward propagates the input through the network and returns the output.
-func (n *network) Forward(x []float64, trace *ForwardTrace) ([]float64, error) {
+func (n *Network) Forward(x []float64, trace *ForwardTrace) ([]float64, error) {
 	var err error
 	out := x
 	record := trace != nil

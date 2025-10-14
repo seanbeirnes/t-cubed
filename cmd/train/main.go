@@ -250,7 +250,7 @@ func trainNeuralNetwork() {
 }
 
 func testNeuralNetwork() {
-	savedName := "weights.json"
+	savedName := "data/weights.json"
 	network, err := ai.LoadNetwork(savedName)
 	if err != nil {
 		fmt.Println("Failed to load network:", err)

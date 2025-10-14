@@ -3,6 +3,7 @@ package engine
 // Acts as a public interface for the package.
 
 import (
+	"encoding/binary"
 	"fmt"
 	"t-cubed/internal/util"
 )
@@ -44,6 +45,28 @@ func NewGameState(gameStateOptions *GameStateOptions) (*GameState, error) {
 	}
 
 	return gameState, nil
+}
+
+func NewGameStateFromBytes(gameStateOptions *GameStateOptions, boardState []byte) (*GameState, error) {
+	if len(boardState) != 4 {
+		return nil, fmt.Errorf("Invalid board state length")
+	}
+	gameState, err := NewGameState(gameStateOptions)
+	if err != nil {
+		return nil, err
+	}
+	p1Board, p2Board := unpackBoardBigEndian(boardState)
+	gameState.Board.P1Board = p1Board
+	gameState.Board.P2Board = p2Board
+	return gameState, nil
+}
+
+// Returns the board as a 4-byte array for storage in a database
+func (g *GameState) GetBoardAsByteArray() []byte {
+	board := g.Board
+	p1Board := board.P1Board
+	p2Board := board.P2Board
+	return packBoardBigEndian(p1Board, p2Board)
 }
 
 func (g *GameState) GetBoardAsBytes() []byte {
@@ -119,4 +142,26 @@ func (g *GameState) Move(position uint8) (bool, error) {
 	g.TerminalState = IsTerminal(g.Board)
 
 	return true, nil
+}
+
+// Encodes two uint16 bitboards into 4 bytes (big-endian).
+// Order: [P1 hi, P1 lo, P2 hi, P2 lo]
+func packBoardBigEndian(p1Board, p2Board uint16) []byte {
+    out := make([]byte, 4)
+    binary.BigEndian.PutUint16(out[0:2], p1Board)
+    binary.BigEndian.PutUint16(out[2:4], p2Board)
+    return out
+}
+
+// Decodes a 4-byte big-endian payload into two uint16 bitboards.
+// Expects len(b) == 4.
+// Order: p1 hi, p1 lo, p2 hi, p2 lo
+func unpackBoardBigEndian(b []byte) (uint16, uint16) {
+    p1 := binary.BigEndian.Uint16(b[0:2])
+    p2 := binary.BigEndian.Uint16(b[2:4])
+    return p1, p2
+}
+
+func UnpackBoard(b []byte) (uint16, uint16) {
+	return unpackBoardBigEndian(b)
 }
