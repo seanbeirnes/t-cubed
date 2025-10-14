@@ -25,14 +25,14 @@ function Index() {
                 <main className="flex flex-col items-center">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                         <NavCard 
-                            to="/game/minimax" 
+                            to="/game/newgame?gt=mm" 
                             title="Challenge Minimax AI"
                             description="Play against Minimax, a classic AI algorithm."
                             icon={<Swords className="w-6 h-6" />} 
                             color="from-blue-500/20 to-blue-400/10" ring="ring-blue-400" />
 
                         <NavCard
-                            to="/game/nn"
+                            to="/game/newgame?gt=nn"
                             title="Challenge Neural Net AI"
                             description="Play a neural network and see it in action!"
                             icon={<Brain className="w-6 h-6" />}

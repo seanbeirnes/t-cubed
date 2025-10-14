@@ -11,8 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GameNnRouteImport } from './routes/game/nn'
+import { Route as GameNewgameRouteImport } from './routes/game/newgame'
 import { Route as GameMinimaxRouteImport } from './routes/game/minimax'
-import { Route as GameHumanRouteImport } from './routes/game/human'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,48 +24,48 @@ const GameNnRoute = GameNnRouteImport.update({
   path: '/game/nn',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GameNewgameRoute = GameNewgameRouteImport.update({
+  id: '/game/newgame',
+  path: '/game/newgame',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GameMinimaxRoute = GameMinimaxRouteImport.update({
   id: '/game/minimax',
   path: '/game/minimax',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GameHumanRoute = GameHumanRouteImport.update({
-  id: '/game/human',
-  path: '/game/human',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/game/human': typeof GameHumanRoute
   '/game/minimax': typeof GameMinimaxRoute
+  '/game/newgame': typeof GameNewgameRoute
   '/game/nn': typeof GameNnRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/game/human': typeof GameHumanRoute
   '/game/minimax': typeof GameMinimaxRoute
+  '/game/newgame': typeof GameNewgameRoute
   '/game/nn': typeof GameNnRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/game/human': typeof GameHumanRoute
   '/game/minimax': typeof GameMinimaxRoute
+  '/game/newgame': typeof GameNewgameRoute
   '/game/nn': typeof GameNnRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/game/human' | '/game/minimax' | '/game/nn'
+  fullPaths: '/' | '/game/minimax' | '/game/newgame' | '/game/nn'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/game/human' | '/game/minimax' | '/game/nn'
-  id: '__root__' | '/' | '/game/human' | '/game/minimax' | '/game/nn'
+  to: '/' | '/game/minimax' | '/game/newgame' | '/game/nn'
+  id: '__root__' | '/' | '/game/minimax' | '/game/newgame' | '/game/nn'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  GameHumanRoute: typeof GameHumanRoute
   GameMinimaxRoute: typeof GameMinimaxRoute
+  GameNewgameRoute: typeof GameNewgameRoute
   GameNnRoute: typeof GameNnRoute
 }
 
@@ -85,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GameNnRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/game/newgame': {
+      id: '/game/newgame'
+      path: '/game/newgame'
+      fullPath: '/game/newgame'
+      preLoaderRoute: typeof GameNewgameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/game/minimax': {
       id: '/game/minimax'
       path: '/game/minimax'
@@ -92,20 +99,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GameMinimaxRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/game/human': {
-      id: '/game/human'
-      path: '/game/human'
-      fullPath: '/game/human'
-      preLoaderRoute: typeof GameHumanRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  GameHumanRoute: GameHumanRoute,
   GameMinimaxRoute: GameMinimaxRoute,
+  GameNewgameRoute: GameNewgameRoute,
   GameNnRoute: GameNnRoute,
 }
 export const routeTree = rootRouteImport
