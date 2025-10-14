@@ -28,11 +28,11 @@ func newRouter(config *Config) *gin.Engine {
 func applyRoutes(config *Config, engine *gin.Engine, handler *handler.Handler) {
 	// Middleware for all routes
 	engine.Use(
-		middleware.NewCors(config.CORS_ORIGINS),
-		middleware.NewSecure(config.DEV_MODE),
-		middleware.NewGzip(),
 		middleware.NewRequestID(),
+		middleware.NewSecure(config.DEV_MODE), // Must go before CORS
+		middleware.NewCors(config.CORS_ORIGINS),
 		middleware.NewRateLimiter(),
+		middleware.NewGzip(),
 	)
 
 	// Index
