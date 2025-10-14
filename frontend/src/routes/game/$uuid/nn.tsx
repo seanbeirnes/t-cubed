@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import NNGameController from '../../features/nn_game_controller/components/NNGameController';
-import { GameViewHeader } from '../../shared/components/layout/GameViewHeader';
+import NNGameController from '../../../features/nn_game_controller/components/NNGameController';
+import { GameViewHeader } from '../../../shared/components/layout/GameViewHeader';
 
-export const Route = createFileRoute('/game/nn')({
+export const Route = createFileRoute('/game/$uuid/nn')({
     component: NN,
 })
 
