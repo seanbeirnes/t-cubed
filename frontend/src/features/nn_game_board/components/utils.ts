@@ -4,7 +4,7 @@ import { GAME_TOKENS } from "../../../shared/types";
 export function validateBoardState(boardState: string[]): boolean {
   if (boardState.length !== 9) return false;
   for (let i = 0; i < boardState.length; i++) {
-    if (boardState[i] !== "X" && boardState[i] !== "O" && boardState[i] !== "_") {
+    if (boardState[i] !== GAME_TOKENS.X && boardState[i] !== GAME_TOKENS.O && boardState[i] !== GAME_TOKENS.EMPTY) {
       return false;
     }
   }

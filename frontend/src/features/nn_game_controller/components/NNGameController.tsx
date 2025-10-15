@@ -1,6 +1,6 @@
-import { createContext, useState } from "react";
+import { createContext, useEffect, useState } from "react";
 
-import type { GameToken } from "../../../shared/types";
+import { type GameToken, type Game, GAME_TOKENS } from "../../../shared/types";
 import type { HoveredNeuron, NNGameState, NNHoverState } from "../types";
 import type { Layer } from "../../../features/nn_animation_panel";
 
@@ -68,13 +68,43 @@ export const NNGameStateContext = createContext<NNGameState>(initialGameState);
 export const NNHoverStateContext = createContext<NNHoverState>(initialHoverState);
 
 interface NNGameControllerProps {
+    uuid: string;
     animationPanelWidth: number;
 }
 
-export default function NNGameController({ animationPanelWidth }: NNGameControllerProps) {
+async function fetchGame(uuid: string): Promise<Game> {
+    const res = await fetch(`/api/v1/game/${uuid}`)
+    if (!res.ok) {
+        throw new Error('Failed to fetch game')
+    }
+    const data = await res.json()
+    return {
+        boardState: data.board_state,
+        gameType: data.game_type,
+        name: data.name,
+        nextPlayerId: data.next_player_id,
+        player1Piece: data.player_1_piece,
+        player2Piece: data.player_2_piece,
+        terminalState: data.terminal_state,
+        uuid: data.uuid,
+    }
+}
+
+export default function NNGameController({ uuid, animationPanelWidth }: NNGameControllerProps) {
     const [gameState, setGameState] = useState(initialGameState);
+    const [game, setGame] = useState<Game | null>(null);
     const [hoveredCell, setHoveredCell] = useState<number | null>(null);
     const [hoveredNeuron, setHoveredNeuron] = useState<HoveredNeuron | null>(null);
+
+    useEffect(() => {
+        const getGame = async () => {
+            const data = await fetchGame(uuid)
+            setGame(data)
+        }
+        getGame()
+
+    }, [])
+    console.log(game)
 
     return (
         <NNGameStateContext.Provider value={gameState}>
@@ -84,7 +114,12 @@ export default function NNGameController({ animationPanelWidth }: NNGameControll
                 setHoveredCell,
                 setHoveredNeuron,
             }} >
-                <NNGameBoard />
+                <NNGameBoard
+                    gameTitle={game?.name} 
+                    boardState={game?.boardState}
+                    p1Piece={game?.player1Piece}
+                    p2Piece={game?.player2Piece}
+                />
                 <NNAnimationPanel width={animationPanelWidth} />
             </NNHoverStateContext.Provider>
         </NNGameStateContext.Provider>
