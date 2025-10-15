@@ -72,6 +72,44 @@ interface NNGameControllerProps {
     animationPanelWidth: number;
 }
 
+const hexToBitsMap: Record<string, number[]> = {
+    "0": [0, 0, 0, 0],
+    "1": [0, 0, 0, 1],
+    "2": [0, 0, 1, 0],
+    "3": [0, 0, 1, 1],
+    "4": [0, 1, 0, 0],
+    "5": [0, 1, 0, 1],
+    "6": [0, 1, 1, 0],
+    "7": [0, 1, 1, 1],
+    "8": [1, 0, 0, 0],
+    "9": [1, 0, 0, 1],
+    "A": [1, 0, 1, 0],
+    "B": [1, 0, 1, 1],
+    "C": [1, 1, 0, 0],
+    "D": [1, 1, 0, 1],
+    "E": [1, 1, 1, 0],
+    "F": [1, 1, 1, 1],
+}
+
+// Converts a 32-bit encoded hex string to a 32-bit array (16 bits P1, 16 bits P2)
+function boardBitsFromHex(hex: string): number[] {
+    if (hex.length !== 8) {
+        throw new Error('Invalid board state hex')
+    }
+
+    // Convert hex to bits
+    const bits: number[] = []
+    hex.split('').forEach((char: string) => {
+        const nums = hexToBitsMap[char.toUpperCase()]
+        if (!nums) {
+            throw new Error('Invalid board state hex')
+        }
+        bits.push(...nums)
+    })
+
+    return bits
+}
+
 async function fetchGame(uuid: string): Promise<Game> {
     const res = await fetch(`/api/v1/game/${uuid}`)
     if (!res.ok) {
@@ -96,6 +134,8 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
     const [hoveredCell, setHoveredCell] = useState<number | null>(null);
     const [hoveredNeuron, setHoveredNeuron] = useState<HoveredNeuron | null>(null);
 
+    const bitBoard = boardBitsFromHex(game?.boardState || "00000000")
+
     useEffect(() => {
         const getGame = async () => {
             const data = await fetchGame(uuid)
@@ -116,7 +156,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
             }} >
                 <NNGameBoard
                     gameTitle={game?.name} 
-                    boardState={game?.boardState}
+                    boardState={bitBoard}
                     p1Piece={game?.player1Piece}
                     p2Piece={game?.player2Piece}
                 />

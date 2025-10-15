@@ -1,9 +1,6 @@
-import { useContext, } from "react";
-
-import { type GameToken, type Game, GAME_TOKENS } from "../../../shared/types";
+import { type GameToken, GAME_TOKENS } from "../../../shared/types";
 
 import { ErrorMessage } from "../../../shared/components";
-import { NNGameStateContext } from "../../nn_game_controller";
 
 import BoardHeader from "./BoardHeader";
 import BoardGrid from "./BoardGrid";
@@ -12,42 +9,9 @@ import InfoBlurb from "./InfoBlurb";
 
 import { getWinningLine, validateBoardState, validateTokens } from "./utils";
 
-const hexToBitsMap: Record<string, number[]> = {
-    "0": [0, 0, 0, 0],
-    "1": [0, 0, 0, 1],
-    "2": [0, 0, 1, 0],
-    "3": [0, 0, 1, 1],
-    "4": [0, 1, 0, 0],
-    "5": [0, 1, 0, 1],
-    "6": [0, 1, 1, 0],
-    "7": [0, 1, 1, 1],
-    "8": [1, 0, 0, 0],
-    "9": [1, 0, 0, 1],
-    "A": [1, 0, 1, 0],
-    "B": [1, 0, 1, 1],
-    "C": [1, 1, 0, 0],
-    "D": [1, 1, 0, 1],
-    "E": [1, 1, 1, 0],
-    "F": [1, 1, 1, 1],
-}
-
-// Converts a 32-bit hex string (16 bits P1, 16 bits P2) to a GameToken[]
+// Converts a 32-bit array (16 bits P1, 16 bits P2) to GameToken[] of len 9
 // Least significant bit is first
-function boardStateFromHex(hex: string, p1Piece: GameToken, p2Piece: GameToken): GameToken[] {
-    if (hex.length !== 8) {
-        throw new Error('Invalid board state hex')
-    }
-
-    // Convert hex to bits
-    const bits: number[] = []
-    hex.split('').forEach((char: string) => {
-        const nums = hexToBitsMap[char.toUpperCase()]
-        if (!nums) {
-            throw new Error('Invalid board state hex')
-        }
-        bits.push(...nums)
-    })
-
+function boardStateFromBits(bits: number[], p1Piece: GameToken, p2Piece: GameToken): GameToken[] {
     // Split into bitboards
     const bitsP1: number[] = bits.slice(7, 16)
     const bitsP2: number[] = bits.slice(23, 32)
@@ -76,20 +40,19 @@ function boardStateFromHex(hex: string, p1Piece: GameToken, p2Piece: GameToken):
 
 interface NNGameBoardProps {
     gameTitle: string | undefined;
-    boardState: string | undefined;
+    boardState: number[] | undefined;
     p1Piece: string | undefined; // Human
     p2Piece: string | undefined; // AI
 }
 
 export default function NNGameBoard({ gameTitle, boardState, p1Piece, p2Piece }: NNGameBoardProps) {
-    const gameState = useContext(NNGameStateContext);
     if (!boardState || !p1Piece || !p2Piece) {
-        boardState = "00000000"
+        boardState = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
         p1Piece = "X"
         p2Piece = "O"
     }
 
-    const board = boardStateFromHex(boardState, p1Piece, p2Piece)
+    const board = boardStateFromBits(boardState, p1Piece, p2Piece)
 
     if (!validateBoardState(board) || !validateTokens(p1Piece, p2Piece)) {
         return (
