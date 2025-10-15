@@ -94,8 +94,9 @@ type ReqNNMove struct {
 }
 
 type ResNNMove struct {
-	Game  *ResGame             `json:"game"`
-	Trace *service.NNMoveTrace `json:"trace"`
+	Game        *ResGame             `json:"game"`
+	Trace       *service.NNMoveTrace `json:"trace"`
+	RankedMoves []int                `json:"ranked_moves"`
 }
 
 // Plays Neural Network move
@@ -151,6 +152,7 @@ func (h *Handler) PlayNNMove(c *gin.Context) {
 			TerminalState: result.Game.TerminalState,
 		},
 		Trace: nil,
+		RankedMoves: result.RankedMoves,
 	}
 
 	if result.Trace != nil {
@@ -166,7 +168,7 @@ type ReqMMMove struct {
 }
 
 type ResMMMove struct {
-	Game  *ResGame             `json:"game"`
+	Game *ResGame `json:"game"`
 }
 
 // Plays Minimax move

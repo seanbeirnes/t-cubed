@@ -121,8 +121,9 @@ func (s *GameService) GetGame(ctx context.Context, uuid uuid.UUID) (*Game, error
 }
 
 type NNMoveResult struct {
-	Game  *Game            `json:"game"`
-	Trace *ai.ForwardTrace `json:"trace"`
+	Game        *Game            `json:"game"`
+	Trace       *ai.ForwardTrace `json:"trace"`
+	RankedMoves []int            `json:"ranked_moves"`
 }
 
 // Plays a Neural Network move
@@ -248,6 +249,7 @@ func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID i
 	return &NNMoveResult{
 		Game:  &game,
 		Trace: trace,
+		RankedMoves: positions,
 	}, nil
 }
 
