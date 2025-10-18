@@ -1,9 +1,9 @@
 import { useContext, useState } from "react";
 
-import type { Layer, LayerType, NeuronFill } from "../types";
+import type { Layer, LayerType, NeuronFill, OverrideExpandedState } from "../types";
 import type { HoveredNeuron } from "../../nn_game_controller";
 import type { AppState } from "../../../shared/types";
-import { LAYER_TYPES, NEURON_FILLS } from "../types";
+import { LAYER_TYPES, NEURON_FILLS, OVERRIDE_EXPANDED_STATE } from "../types";
 
 import { ChevronsUpDown, ChevronsDownUp, ArrowUp, ArrowDown } from "lucide-react";
 
@@ -22,6 +22,7 @@ const WINDOW_WIDTH_THRESHOLD: number = 768;
 interface NNAnimationPanelProps {
     width: number;
     network: Layer[];
+    overrideExpandedState?: OverrideExpandedState;
 }
 
 export type Config = {
@@ -137,7 +138,7 @@ function isHoveredNeuronInInputLayerPlayer2(hoveredNeuron: HoveredNeuron | null)
     return hoveredNeuron !== null && hoveredNeuron.layerIndex === 0 && hoveredNeuron.neuronIndex >= 9;
 }
 
-export default function NNAnimationPanel({ width, network }: NNAnimationPanelProps) {
+export default function NNAnimationPanel({ width, network, overrideExpandedState = OVERRIDE_EXPANDED_STATE.NONE }: NNAnimationPanelProps) {
     const appState: AppState = useContext(AppStateContext);
     const hoverState = useContext(NNHoverStateContext);
     const showNeuronText: boolean = appState.window.width > WINDOW_WIDTH_THRESHOLD;
@@ -188,6 +189,13 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
         }
     }
 
+    if (overrideExpandedState === "open" && offset === offsetClosed) {
+        toggleExpanded();
+    }
+    if (overrideExpandedState === "closed" && offset === offsetOpen) {
+        toggleExpanded();
+    }
+
     return (
         <div id="nn-animation-panel" style={
             {
@@ -204,8 +212,11 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
         >
             <div className={`grid grid-cols-2 md:grid-cols-8 justify-items-center gap-[2vw]`}>
                 <button
-                    className={`col-span-1 ${appState.window.width < WINDOW_WIDTH_THRESHOLD ? "hidden" : ""} 
-                    justify-self-start min-w-[2vw] px-6 py-1 outline-2 outline-amber-500 text-amber-500 bg-slate-500 hover:text-amber-400 hover:outline-amber-400 hover:bg-slate-400 active:text-amber-600 active:bg-slate-600 transition-all duration-200 shadow-inner rounded-full`}
+                    className={`col-span-1 justify-self-start min-w-[2vw] px-6 py-1 outline-2 outline-amber-500 text-amber-500 bg-slate-500 transition-all duration-200 
+                    ${appState.window.width < WINDOW_WIDTH_THRESHOLD ? "hidden" : ""} 
+                    ${overrideExpandedState === OVERRIDE_EXPANDED_STATE.OPEN || overrideExpandedState === OVERRIDE_EXPANDED_STATE.CLOSED ? "opacity-50 cursor-not-allowed" : ""}
+                    ${overrideExpandedState === OVERRIDE_EXPANDED_STATE.NONE ? "hover:text-amber-400 hover:outline-amber-400 hover:bg-slate-400 active:text-amber-600 active:bg-slate-600" : ""} 
+                    shadow-inner rounded-full`}
                     onClick={toggleExpanded}
                     onKeyDown={(e) => {
                         if (e.key === "Escape") {
@@ -215,6 +226,7 @@ export default function NNAnimationPanel({ width, network }: NNAnimationPanelPro
                     aria-controls="nn-animation-panel"
                     aria-label={expanded ? "Close neural network animation panel" : "Open neural network animation panel"}
                     title={expanded ? "Close neural network animation panel" : "Open neural network animation panel"}
+                    disabled={overrideExpandedState === "open" || overrideExpandedState === "closed"}
                 >
                     {expanded ? <ChevronsDownUp className="w-full h-full" /> : <ChevronsUpDown className="w-full h-full" />}
                 </button>

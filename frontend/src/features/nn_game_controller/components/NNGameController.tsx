@@ -1,51 +1,13 @@
 import { createContext, useEffect, useState } from "react";
 
 import { type Game } from "../../../shared/types";
-import type { HoveredNeuron, NNHoverState } from "../types";
+import { NN_GAME_STATES, type NNGameState, type HoveredNeuron, type NNHoverState} from "../types";
 import type { Layer } from "../../../features/nn_animation_panel";
 
 import { NNGameBoard } from "../../../features/nn_game_board";
 import { NNAnimationPanel } from "../../../features/nn_animation_panel";
-
-const network: Layer[] = [
-    {
-        size: 18,
-        activations: [
-           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        ],
-    },
-    {
-        size: 32,
-        activations: [
-            0.41, 0.88, 0.12, 0.66, 0.27, 0.73, 0.34, 0.51, 0.99, 0.18,
-            0.47, 0.62, 0.05, 0.83, 0.39, 0.74, 0.21, 0.56, 0.68, 0.91,
-            0.02, 0.77, 0.36, 0.49, 0.15, 0.88, 0.63, 0.05, 0.92, 0.28,
-            0.54, 0.79,
-        ],
-    },
-    {
-        size: 32,
-        activations: [
-            0.07, 0.63, 0.52, 0.95, 0.31, 0.48, 0.12, 0.77, 0.84, 0.20,
-            0.39, 0.56, 0.68, 0.91, 0.03, 0.72, 0.44, 0.87, 0.29, 0.66,
-            0.14, 0.53, 0.98, 0.37, 0.61, 0.19, 0.85, 0.25, 0.79, 0.43,
-            0.57, 0.90,
-        ],
-    },
-    {
-        size: 32,
-        activations: [
-            0.22, 0.59, 0.81, 0.14, 0.67, 0.35, 0.92, 0.48, 0.03, 0.76,
-            0.41, 0.88, 0.29, 0.55, 0.71, 0.16, 0.64, 0.37, 0.99, 0.23,
-            0.50, 0.80, 0.12, 0.68, 0.44, 0.97, 0.31, 0.58, 0.84, 0.07,
-            0.61, 0.33,
-        ],
-    },
-    {
-        size: 9,
-        activations: [0.14, 0.76, 0.33, 0.89, 0.21, 0.65, 0.47, 0.09, 0.38],
-    },
-];
+import { ErrorMessage } from "../../../shared/components";
+import { OVERRIDE_EXPANDED_STATE, type OverrideExpandedState } from "../../nn_animation_panel/types";
 
 const initialHoverState: NNHoverState = {
     hoveredCell: null,
@@ -55,11 +17,6 @@ const initialHoverState: NNHoverState = {
 }
 
 export const NNHoverStateContext = createContext<NNHoverState>(initialHoverState);
-
-interface NNGameControllerProps {
-    uuid: string;
-    animationPanelWidth: number;
-}
 
 const hexToBitsMap: Record<string, number[]> = {
     "0": [0, 0, 0, 0],
@@ -148,8 +105,67 @@ async function fetchGame(uuid: string): Promise<Game> {
     }
 }
 
+function getEmptyNetwork(): Layer[] {
+    const makeLayer = (size: number): Layer => ({
+        size,
+        activations: Array(size).fill(0),
+    })
+    return [makeLayer(18), makeLayer(32), makeLayer(32), makeLayer(32), makeLayer(9)]
+}
+
+function getOverrideExpandedState(gameState: NNGameState, network: Layer[]): OverrideExpandedState {
+    switch (gameState) {
+        case NN_GAME_STATES.PLAYER_1_TURN:
+            // If no moves played, disabled expanding the panel
+            return !network[0]?.activations?.includes(1) ? OVERRIDE_EXPANDED_STATE.CLOSED : OVERRIDE_EXPANDED_STATE.NONE;
+        case NN_GAME_STATES.PLAYER_2_TURN:
+            // While the AI is thinking, disable expanding the panel
+            return OVERRIDE_EXPANDED_STATE.CLOSED
+        case NN_GAME_STATES.ANIMATING:
+            // While the AI is animating, keep the panel open
+            return OVERRIDE_EXPANDED_STATE.OPEN
+        default:
+            return OVERRIDE_EXPANDED_STATE.NONE
+    }
+}
+
+function getGameStateMessage(gameState: NNGameState, game: Game | null): string {
+    switch (gameState) {
+        case NN_GAME_STATES.PLAYER_1_TURN:
+            return "Your turn, Human!"
+        case NN_GAME_STATES.PLAYER_2_TURN:
+            return "The AI is thinking... 🤫"
+        case NN_GAME_STATES.GAME_OVER:
+            switch (game?.terminalState) {
+                case 1:
+                    return "Human wins!"
+                case 2:
+                    return "AI wins!"
+                case 3:
+                    return "Draw!"
+                default:
+                    return "Unknown"
+            }
+        case NN_GAME_STATES.ANIMATING:
+            return "The AI is thinking... 🤫"
+        case NN_GAME_STATES.LOADING:
+            return "Loading..."
+        case NN_GAME_STATES.ERROR:
+            return "Error"
+        default:
+            return "Unknown"
+    }
+}
+
+interface NNGameControllerProps {
+    uuid: string;
+    animationPanelWidth: number;
+}
+
 export default function NNGameController({ uuid, animationPanelWidth }: NNGameControllerProps) {
+    const [gameState, setGameState] = useState<NNGameState>(NN_GAME_STATES.PLAYER_2_TURN);
     const [game, setGame] = useState<Game | null>(null);
+    const [network, setNetwork] = useState<Layer[]>(getEmptyNetwork());
     const [hoveredCell, setHoveredCell] = useState<number | null>(null);
     const [hoveredNeuron, setHoveredNeuron] = useState<HoveredNeuron | null>(null);
 
@@ -164,7 +180,13 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
         getGame()
 
     }, [])
-    console.log(game)
+    if (gameState === NN_GAME_STATES.LOADING) {
+        return <div>Loading...</div>
+    }
+
+    if (gameState === NN_GAME_STATES.ERROR) {
+        return <ErrorMessage />
+    }
 
     return (
         <NNHoverStateContext.Provider value={{
@@ -173,13 +195,19 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
             setHoveredCell,
             setHoveredNeuron,
         }} >
+            <p className={`w-100 px-4 py-2 mb-2 border-2 border-amber-500/80 rounded-full 
+                text-2xl text-center text-amber-500 bg-slate-500 text-shadow-md text-shadow-amber-900 
+                ${gameState === NN_GAME_STATES.PLAYER_2_TURN || gameState === NN_GAME_STATES.ANIMATING ? "animate-pulse" : ""}
+                shadow-inner`}>
+                {getGameStateMessage(gameState, game)}
+            </p>
             <NNGameBoard
                 gameTitle={game?.name} 
                 boardState={bitBoard}
                 p1Piece={game?.player1Piece}
                 p2Piece={game?.player2Piece}
             />
-            <NNAnimationPanel width={animationPanelWidth} network={network} />
+            <NNAnimationPanel width={animationPanelWidth} network={network} overrideExpandedState={getOverrideExpandedState(gameState, network)} />
         </NNHoverStateContext.Provider>
     )
 }

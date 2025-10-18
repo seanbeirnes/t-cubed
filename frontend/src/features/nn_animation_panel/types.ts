@@ -19,3 +19,11 @@ export const NEURON_FILLS = {
 } 
 
 export type NeuronFill = typeof NEURON_FILLS[keyof typeof NEURON_FILLS];
+
+export const OVERRIDE_EXPANDED_STATE = {
+    OPEN: "open",
+    CLOSED: "closed",
+    NONE: "none",
+}
+
+export type OverrideExpandedState = typeof OVERRIDE_EXPANDED_STATE[keyof typeof OVERRIDE_EXPANDED_STATE];
