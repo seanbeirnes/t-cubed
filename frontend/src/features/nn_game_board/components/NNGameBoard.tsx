@@ -22,10 +22,12 @@ function boardStateFromBits(bits: number[], p1Piece: GameToken, p2Piece: GameTok
         GAME_TOKENS.EMPTY, GAME_TOKENS.EMPTY, GAME_TOKENS.EMPTY,
         GAME_TOKENS.EMPTY, GAME_TOKENS.EMPTY, GAME_TOKENS.EMPTY
     ]
-    // Must go from right to left to start at least significant bit
-    for (let i = 8; i >= 0; i--) {
-        const p1Bit = bitsP1[i]
-        const p2Bit = bitsP2[i]
+
+    // Must go backwards for bitboards, but forward for boardState
+    let bitIndex = 8
+    boardState.forEach((_, i) => {
+        const p1Bit = bitsP1[bitIndex]
+        const p2Bit = bitsP2[bitIndex]
         if (p1Bit === 1 && p2Bit === 1) {
             throw new Error('Conflicting player pieces')
         }
@@ -34,7 +36,8 @@ function boardStateFromBits(bits: number[], p1Piece: GameToken, p2Piece: GameTok
         } else if (p2Bit === 1) {
             boardState[i] = p2Piece
         }
-    }
+        bitIndex--
+    })
     return boardState
 }
 

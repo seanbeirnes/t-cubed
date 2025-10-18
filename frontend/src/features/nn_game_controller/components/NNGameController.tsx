@@ -11,7 +11,7 @@ const network: Layer[] = [
     {
         size: 18,
         activations: [
-            1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ],
     },
     {
@@ -99,6 +99,37 @@ function boardBitsFromHex(hex: string): number[] {
     return bits
 }
 
+function setInputLayerActivations(network: Layer[], bitBoard: number[]): void {
+    if (!bitBoard) {
+        console.warn("Invalid board state")
+        return
+    }
+
+    const inputLayerActivations = network[0]?.activations
+    if (!inputLayerActivations) {
+        console.warn("Input layer does not exist")
+        return
+    }
+    if (inputLayerActivations.length !== 18) {
+        console.warn("Input layer has an unexpected number of neurons")
+        return
+    }
+
+    // Set activations for player 1 ([7, 15]) and player 2 ([23, 31])
+    const p1StartIndex = 15
+    const p1EndIndex = 7
+    const p2StartIndex = 31
+    let bitBoardIndex = p1StartIndex
+    inputLayerActivations.forEach((_, i) => {
+        inputLayerActivations[i] = bitBoard[bitBoardIndex]
+        if (bitBoardIndex ===  p1EndIndex) {
+            bitBoardIndex = p2StartIndex
+        } else {
+            bitBoardIndex--
+        }
+    })
+}
+
 async function fetchGame(uuid: string): Promise<Game> {
     const res = await fetch(`/api/v1/game/${uuid}`)
     if (!res.ok) {
@@ -123,6 +154,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
     const [hoveredNeuron, setHoveredNeuron] = useState<HoveredNeuron | null>(null);
 
     const bitBoard = boardBitsFromHex(game?.boardState || "00000000")
+    setInputLayerActivations(network, bitBoard)
 
     useEffect(() => {
         const getGame = async () => {
