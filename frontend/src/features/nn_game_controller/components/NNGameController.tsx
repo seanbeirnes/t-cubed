@@ -1,13 +1,11 @@
 import { createContext, useEffect, useState } from "react";
 
-import { type GameToken, type Game, GAME_TOKENS } from "../../../shared/types";
-import type { HoveredNeuron, NNGameState, NNHoverState } from "../types";
+import { type Game } from "../../../shared/types";
+import type { HoveredNeuron, NNHoverState } from "../types";
 import type { Layer } from "../../../features/nn_animation_panel";
 
 import { NNGameBoard } from "../../../features/nn_game_board";
 import { NNAnimationPanel } from "../../../features/nn_animation_panel";
-
-const boardSate: GameToken[] = ["X", "O", "_", "_", "_", "X", "_", "_", "_"]
 
 const network: Layer[] = [
     {
@@ -49,14 +47,6 @@ const network: Layer[] = [
     },
 ];
 
-const initialGameState: NNGameState = {
-    boardState: boardSate,
-    network: network,
-    humanToken: "X",
-    aiToken: "O",
-    moveRanks: [2, 2, 2, 2, 2, 2, 2, 2, 2],
-}
-
 const initialHoverState: NNHoverState = {
     hoveredCell: null,
     setHoveredCell: null,
@@ -64,7 +54,6 @@ const initialHoverState: NNHoverState = {
     setHoveredNeuron: null,
 }
 
-export const NNGameStateContext = createContext<NNGameState>(initialGameState);
 export const NNHoverStateContext = createContext<NNHoverState>(initialHoverState);
 
 interface NNGameControllerProps {
@@ -129,7 +118,6 @@ async function fetchGame(uuid: string): Promise<Game> {
 }
 
 export default function NNGameController({ uuid, animationPanelWidth }: NNGameControllerProps) {
-    const [gameState, setGameState] = useState(initialGameState);
     const [game, setGame] = useState<Game | null>(null);
     const [hoveredCell, setHoveredCell] = useState<number | null>(null);
     const [hoveredNeuron, setHoveredNeuron] = useState<HoveredNeuron | null>(null);
@@ -147,21 +135,19 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
     console.log(game)
 
     return (
-        <NNGameStateContext.Provider value={gameState}>
-            <NNHoverStateContext.Provider value={{
-                hoveredCell,
-                hoveredNeuron,
-                setHoveredCell,
-                setHoveredNeuron,
-            }} >
-                <NNGameBoard
-                    gameTitle={game?.name} 
-                    boardState={bitBoard}
-                    p1Piece={game?.player1Piece}
-                    p2Piece={game?.player2Piece}
-                />
-                <NNAnimationPanel width={animationPanelWidth} />
-            </NNHoverStateContext.Provider>
-        </NNGameStateContext.Provider>
+        <NNHoverStateContext.Provider value={{
+            hoveredCell,
+            hoveredNeuron,
+            setHoveredCell,
+            setHoveredNeuron,
+        }} >
+            <NNGameBoard
+                gameTitle={game?.name} 
+                boardState={bitBoard}
+                p1Piece={game?.player1Piece}
+                p2Piece={game?.player2Piece}
+            />
+            <NNAnimationPanel width={animationPanelWidth} network={network} />
+        </NNHoverStateContext.Provider>
     )
 }

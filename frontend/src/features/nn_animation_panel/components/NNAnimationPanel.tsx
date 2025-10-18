@@ -8,7 +8,6 @@ import { LAYER_TYPES, NEURON_FILLS } from "../types";
 import { ChevronsUpDown, ChevronsDownUp, ArrowUp, ArrowDown } from "lucide-react";
 
 import { AppStateContext } from "../../../App";
-import { NNGameStateContext } from "../../nn_game_controller";
 import { NNHoverStateContext } from "../../nn_game_controller";
 import Neuron from "./Neuron";
 import Connection from "./Connection";
@@ -22,6 +21,7 @@ const WINDOW_WIDTH_THRESHOLD: number = 768;
 
 interface NNAnimationPanelProps {
     width: number;
+    network: Layer[];
 }
 
 export type Config = {
@@ -137,13 +137,12 @@ function isHoveredNeuronInInputLayerPlayer2(hoveredNeuron: HoveredNeuron | null)
     return hoveredNeuron !== null && hoveredNeuron.layerIndex === 0 && hoveredNeuron.neuronIndex >= 9;
 }
 
-export default function NNAnimationPanel({ width }: NNAnimationPanelProps) {
+export default function NNAnimationPanel({ width, network }: NNAnimationPanelProps) {
     const appState: AppState = useContext(AppStateContext);
-    const gameState = useContext(NNGameStateContext);
     const hoverState = useContext(NNHoverStateContext);
     const showNeuronText: boolean = appState.window.width > WINDOW_WIDTH_THRESHOLD;
 
-    const config: Config = getConfig(width, gameState.network);
+    const config: Config = getConfig(width, network);
 
     const offsetOpen: number = 0;
     const offsetClosed: number = -(config.totalLayers - 1) * (config.neuronWidth + config.layerSpacing);
@@ -250,10 +249,10 @@ export default function NNAnimationPanel({ width }: NNAnimationPanelProps) {
             </div>
             <svg aria-label="Neural network diagram" width={`${config.innerWidth}vw`} height={`${config.innerHeight}vw`}>
                 {/* Render the connections between neurons first so they are behind the neurons */}
-                {gameState.network.map((layer, i) => {
-                    if (i === gameState.network.length - 1) return null; // last layer has no outgoing connections
+                {network.map((layer, i) => {
+                    if (i === network.length - 1) return null; // last layer has no outgoing connections
 
-                    const nextLayer = gameState.network[i + 1];
+                    const nextLayer = network[i + 1];
 
                     return Array.from({ length: layer.size }).flatMap((_, j) => {
                         const x1 = getNeuronX(j, layer.size, config);
@@ -292,7 +291,7 @@ export default function NNAnimationPanel({ width }: NNAnimationPanelProps) {
 
                 {/* Render the neurons for each layer */}
                 {
-                    gameState.network.map((layer, i) => {
+                    network.map((layer, i) => {
                         const layerType: LayerType = getLayerType(i, config.totalLayers);
                         return (
                             <g key={`layer-${i}`} role="treeitem" aria-label={getLayerAltText(i, layerType)}>
