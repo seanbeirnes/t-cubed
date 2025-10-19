@@ -202,10 +202,12 @@ type AgregatedState = {
     rankedMoves: number[] | null;
 }
 
-function animateNetwork(step: number, network: Layer[], trace: number[][] | null): Layer[] {
+function animateNetwork(step: number, boardState: string, network: Layer[], trace: number[][] | null): Layer[] {
     if (!trace) return network;
     switch (step) {
         case 0:
+            network = getEmptyNetwork();
+            setInputLayerActivations(network, boardBitsFromHex(boardState));
             return network;
         case 1:
             network[1].activations = trace[1];
@@ -244,11 +246,33 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
             }
         case EVENT_TYPES.ANIMATION_STEP:
             const step = action.payload.step;
-            action.payload.callback();
+            const game = state.game;
+            // Handle the game ending before AI's turn
+            if (game?.terminalState === 1) {
+                return {
+                    state: NN_GAME_STATES.GAME_OVER,
+                    game: game,
+                    network: state.network,
+                    trace: state.trace,
+                    rankedMoves: state.rankedMoves,
+                }
+            }
+
+            // Append the next animation step to the queue
+            if (step < 4) action.payload.callback();
+
+            // Handle the game ending after AI's turn
+            let nextState = NN_GAME_STATES.ANIMATING;
+            if (step > 3 && game?.terminalState === 0) {
+                nextState = NN_GAME_STATES.PLAYER_1_TURN;
+            }
+            if (step > 3 && (game?.terminalState === 2 || game?.terminalState === 3)) {
+                nextState = NN_GAME_STATES.GAME_OVER;
+            }
             return {
-                state: step < 4 ? NN_GAME_STATES.ANIMATING : NN_GAME_STATES.PLAYER_1_TURN,
-                game: state.game,
-                network: animateNetwork(step, state.network, state.trace),
+                state: nextState,
+                game: game,
+                network: animateNetwork(step, game?.boardState || "00000000", state.network, state.trace),
                 trace: state.trace,
                 rankedMoves: state.rankedMoves,
             }
@@ -331,7 +355,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
             </p>
             <NNGameBoard
                 gameTitle={state.game?.name}
-                boardState={bitBoard}
+                boardState={state.state !== NN_GAME_STATES.PLAYER_1_TURN ? Array(32).fill(0) : bitBoard}
                 p1Piece={state.game?.player1Piece}
                 p2Piece={state.game?.player2Piece}
                 playMove={(position: number) => {
