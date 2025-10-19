@@ -105,6 +105,25 @@ async function fetchGame(uuid: string): Promise<Game> {
     }
 }
 
+async function sendMove(uuid: string, position: number): Promise<{game: Game, trace: number[], rankedMoves: number[]}> {
+    const res = await fetch(`/api/v1/game/${uuid}/nn`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json; charset=utf-8",
+        },
+        body: JSON.stringify({ player_id: String(1), position: String(position) }),
+    })
+    if (!res.ok) {
+        throw new Error('Failed to send move')
+    }
+    const data = await res.json()
+    return {
+        game: data.game,
+        trace: data.trace,
+        rankedMoves: data.ranked_moves,
+    }
+}
+
 function getEmptyNetwork(): Layer[] {
     const makeLayer = (size: number): Layer => ({
         size,
@@ -134,7 +153,7 @@ function getGameStateMessage(gameState: NNGameState, game: Game | null): string 
         case NN_GAME_STATES.PLAYER_1_TURN:
             return "Your turn, Human!"
         case NN_GAME_STATES.PLAYER_2_TURN:
-            return "The AI is thinking... 🤫"
+            return "The AI is thinking... 🤖"
         case NN_GAME_STATES.GAME_OVER:
             switch (game?.terminalState) {
                 case 1:
@@ -147,7 +166,7 @@ function getGameStateMessage(gameState: NNGameState, game: Game | null): string 
                     return "Unknown"
             }
         case NN_GAME_STATES.ANIMATING:
-            return "The AI is thinking... 🤫"
+            return "The AI is thinking... 🤖"
         case NN_GAME_STATES.LOADING:
             return "Loading..."
         case NN_GAME_STATES.ERROR:
@@ -163,7 +182,7 @@ interface NNGameControllerProps {
 }
 
 export default function NNGameController({ uuid, animationPanelWidth }: NNGameControllerProps) {
-    const [gameState, setGameState] = useState<NNGameState>(NN_GAME_STATES.PLAYER_2_TURN);
+    const [gameState, setGameState] = useState<NNGameState>(NN_GAME_STATES.LOADING);
     const [game, setGame] = useState<Game | null>(null);
     const [network, setNetwork] = useState<Layer[]>(getEmptyNetwork());
     const [hoveredCell, setHoveredCell] = useState<number | null>(null);
@@ -173,13 +192,8 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
     setInputLayerActivations(network, bitBoard)
 
     useEffect(() => {
-        const getGame = async () => {
-            const data = await fetchGame(uuid)
-            setGame(data)
-        }
-        getGame()
 
-    }, [])
+    }, [gameState])
     if (gameState === NN_GAME_STATES.LOADING) {
         return <div>Loading...</div>
     }
