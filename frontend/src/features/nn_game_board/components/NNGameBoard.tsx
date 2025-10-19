@@ -46,9 +46,10 @@ interface NNGameBoardProps {
     boardState: number[] | undefined;
     p1Piece: string | undefined; // Human
     p2Piece: string | undefined; // AI
+    playMove: (position: number) => void;
 }
 
-export default function NNGameBoard({ gameTitle, boardState, p1Piece, p2Piece }: NNGameBoardProps) {
+export default function NNGameBoard({ gameTitle, boardState, p1Piece, p2Piece, playMove }: NNGameBoardProps) {
     if (!boardState || !p1Piece || !p2Piece) {
         boardState = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
         p1Piece = "X"
@@ -79,7 +80,7 @@ export default function NNGameBoard({ gameTitle, boardState, p1Piece, p2Piece }:
                 <BoardHeader gameTitle={gameTitle} humanToken={p1Piece} aiToken={p2Piece} />
 
                 <BoardFrame ariaLabel="3 by 3 game board">
-                    <BoardGrid boardState={board} winningLine={winningLine} />
+                    <BoardGrid boardState={board} winningLine={winningLine} playMove={playMove} humanToken={p1Piece} />
                 </BoardFrame>
 
                 <InfoBlurb />

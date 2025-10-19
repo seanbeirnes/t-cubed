@@ -11,12 +11,26 @@ export type HoveredNeuron = {
 } | null;
 
 export const NN_GAME_STATES = {
+    LOADING: "LOADING",
     PLAYER_1_TURN: "PLAYER_1_TURN",
     PLAYER_2_TURN: "PLAYER_2_TURN",
-    GAME_OVER: "GAME_OVER",
     ANIMATING: "ANIMATING",
-    LOADING: "LOADING",
+    GAME_OVER: "GAME_OVER",
     ERROR: "ERROR",
 }
 
 export type NNGameState = typeof NN_GAME_STATES[keyof typeof NN_GAME_STATES];
+
+export const EVENT_TYPES = {
+    LOAD_GAME: "LOAD_GAME",
+    HUMAN_MOVE: "HUMAN_MOVE",
+    AI_MOVE: "AI_MOVE",
+    TERMINAL_STATE: "TERMINAL_STATE",
+}
+
+export type EventType = typeof EVENT_TYPES[keyof typeof EVENT_TYPES];
+
+export type Event = {
+    type: EventType;
+    payload: any;
+}

@@ -1,7 +1,10 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useEffect, useMemo, useReducer, useRef, useState, type Reducer } from "react";
+import useEventQueue from "../hooks/useEventQueue";
+
+import retry from "../../../shared/utils/retry";
 
 import { type Game } from "../../../shared/types";
-import { NN_GAME_STATES, type NNGameState, type HoveredNeuron, type NNHoverState} from "../types";
+import { NN_GAME_STATES, EVENT_TYPES, type NNGameState, type HoveredNeuron, type NNHoverState, type EventType, type Event } from "../types";
 import type { Layer } from "../../../features/nn_animation_panel";
 
 import { NNGameBoard } from "../../../features/nn_game_board";
@@ -79,7 +82,7 @@ function setInputLayerActivations(network: Layer[], bitBoard: number[]): void {
     let bitBoardIndex = p1StartIndex
     inputLayerActivations.forEach((_, i) => {
         inputLayerActivations[i] = bitBoard[bitBoardIndex]
-        if (bitBoardIndex ===  p1EndIndex) {
+        if (bitBoardIndex === p1EndIndex) {
             bitBoardIndex = p2StartIndex
         } else {
             bitBoardIndex--
@@ -105,7 +108,7 @@ async function fetchGame(uuid: string): Promise<Game> {
     }
 }
 
-async function sendMove(uuid: string, position: number): Promise<{game: Game, trace: number[], rankedMoves: number[]}> {
+async function sendMove(uuid: string, position: number): Promise<{ game: Game, trace: number[], rankedMoves: number[] }> {
     const res = await fetch(`/api/v1/game/${uuid}/nn`, {
         method: "POST",
         headers: {
@@ -118,7 +121,16 @@ async function sendMove(uuid: string, position: number): Promise<{game: Game, tr
     }
     const data = await res.json()
     return {
-        game: data.game,
+        game: {
+            boardState: data.game.board_state,
+            gameType: data.game.game_type,
+            name: data.game.name,
+            nextPlayerId: data.game.next_player_id,
+            player1Piece: data.game.player_1_piece,
+            player2Piece: data.game.player_2_piece,
+            terminalState: data.game.terminal_state,
+            uuid: data.game.uuid,
+        },
         trace: data.trace,
         rankedMoves: data.ranked_moves,
     }
@@ -181,26 +193,73 @@ interface NNGameControllerProps {
     animationPanelWidth: number;
 }
 
+type AgregatedState = {
+    state: NNGameState;
+    game: Game | null;
+    network: Layer[];
+}
+
+function reducer(state: AgregatedState, action: Event): AgregatedState {
+    switch (action.type) {
+        case EVENT_TYPES.LOAD_GAME:
+            return {
+                state: NN_GAME_STATES.PLAYER_1_TURN,
+                game: action.payload.game,
+                network: getEmptyNetwork(),
+            }
+        case EVENT_TYPES.HUMAN_MOVE:
+            return {
+                state: NN_GAME_STATES.PLAYER_2_TURN,
+                game: action.payload.game,
+                network: state.network,
+            }
+        default:
+            console.warn("Unknown event type");
+            return state;
+    }
+}
+
 export default function NNGameController({ uuid, animationPanelWidth }: NNGameControllerProps) {
-    const [gameState, setGameState] = useState<NNGameState>(NN_GAME_STATES.LOADING);
-    const [game, setGame] = useState<Game | null>(null);
-    const [network, setNetwork] = useState<Layer[]>(getEmptyNetwork());
+    const refLoading = useRef(false);
     const [hoveredCell, setHoveredCell] = useState<number | null>(null);
     const [hoveredNeuron, setHoveredNeuron] = useState<HoveredNeuron | null>(null);
-
-    const bitBoard = boardBitsFromHex(game?.boardState || "00000000")
-    setInputLayerActivations(network, bitBoard)
+    const [state, dispatch] = useReducer(reducer, { state: NN_GAME_STATES.LOADING, game: null, network: getEmptyNetwork() });
+    const bitBoard = useMemo(() => boardBitsFromHex(state.game?.boardState || "00000000"), [state.game?.boardState]);
+    const { enqueue, processNext, isProcessing } = useEventQueue(async (event: Event) => {
+        switch (event.type) {
+            case EVENT_TYPES.LOAD_GAME:
+                const currGame = await retry(async () => await fetchGame(uuid));
+                dispatch({ type: EVENT_TYPES.LOAD_GAME, payload: { game: currGame } });
+                break;
+            case EVENT_TYPES.HUMAN_MOVE:
+                const { game, trace, rankedMoves } = await retry(async () => await sendMove(uuid, event.payload.position));
+                dispatch({ type: EVENT_TYPES.HUMAN_MOVE, payload: { game: game, trace: trace, rankedMoves: rankedMoves } });
+                break;
+            default:
+                console.warn("Unknown event type");
+        }
+    });
 
     useEffect(() => {
-
-    }, [gameState])
-    if (gameState === NN_GAME_STATES.LOADING) {
+        if (state.state === NN_GAME_STATES.LOADING && !refLoading.current) {
+            refLoading.current = true;
+            enqueue({ type: EVENT_TYPES.LOAD_GAME, payload: {} });
+        }
+        if (!isProcessing) {
+            processNext();
+        }
+        const interval = setInterval(() => processNext(), 100);
+        return () => clearInterval(interval)
+    }, []);
+    if (state.state === NN_GAME_STATES.LOADING) {
         return <div>Loading...</div>
     }
 
-    if (gameState === NN_GAME_STATES.ERROR) {
+    if (state.state === NN_GAME_STATES.ERROR) {
         return <ErrorMessage />
     }
+
+    setInputLayerActivations(state.network, bitBoard)
 
     return (
         <NNHoverStateContext.Provider value={{
@@ -211,17 +270,20 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
         }} >
             <p className={`w-100 px-4 py-2 mb-2 border-2 border-amber-500/80 rounded-full 
                 text-2xl text-center text-amber-500 bg-slate-500 text-shadow-md text-shadow-amber-900 
-                ${gameState === NN_GAME_STATES.PLAYER_2_TURN || gameState === NN_GAME_STATES.ANIMATING ? "animate-pulse" : ""}
+                ${state.state === NN_GAME_STATES.PLAYER_2_TURN || state.state === NN_GAME_STATES.ANIMATING ? "animate-pulse" : ""}
                 shadow-inner`}>
-                {getGameStateMessage(gameState, game)}
+                {getGameStateMessage(state.state, state.game)}
             </p>
             <NNGameBoard
-                gameTitle={game?.name} 
+                gameTitle={state.game?.name}
                 boardState={bitBoard}
-                p1Piece={game?.player1Piece}
-                p2Piece={game?.player2Piece}
+                p1Piece={state.game?.player1Piece}
+                p2Piece={state.game?.player2Piece}
+                playMove={(position: number) => {
+                    enqueue({ type: EVENT_TYPES.HUMAN_MOVE, payload: { position: position } });
+                }}
             />
-            <NNAnimationPanel width={animationPanelWidth} network={network} overrideExpandedState={getOverrideExpandedState(gameState, network)} />
+            <NNAnimationPanel width={animationPanelWidth} network={state.network} overrideExpandedState={getOverrideExpandedState(state.state, state.network)} />
         </NNHoverStateContext.Provider>
     )
 }
