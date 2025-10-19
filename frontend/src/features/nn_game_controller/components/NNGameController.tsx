@@ -1,16 +1,17 @@
-import { createContext, useEffect, useMemo, useReducer, useRef, useState, type Reducer } from "react";
+import { createContext, useEffect, useMemo, useReducer, useRef, useState} from "react";
 import useEventQueue from "../hooks/useEventQueue";
 
 import retry from "../../../shared/utils/retry";
 
 import { type Game } from "../../../shared/types";
-import { NN_GAME_STATES, EVENT_TYPES, type NNGameState, type HoveredNeuron, type NNHoverState, type EventType, type Event } from "../types";
+import { NN_GAME_STATES, EVENT_TYPES, type NNGameState, type HoveredNeuron, type NNHoverState, type Event } from "../types";
 import type { Layer } from "../../../features/nn_animation_panel";
 
 import { NNGameBoard } from "../../../features/nn_game_board";
 import { NNAnimationPanel } from "../../../features/nn_animation_panel";
 import { ErrorMessage } from "../../../shared/components";
 import { OVERRIDE_EXPANDED_STATE, type OverrideExpandedState } from "../../nn_animation_panel/types";
+import sleep from "../../../shared/utils/sleep";
 
 const initialHoverState: NNHoverState = {
     hoveredCell: null,
@@ -131,7 +132,7 @@ async function sendMove(uuid: string, position: number): Promise<{ game: Game, t
             terminalState: data.game.terminal_state,
             uuid: data.game.uuid,
         },
-        trace: data.trace,
+        trace: data.trace.layerOutputs,
         rankedMoves: data.ranked_moves,
     }
 }
@@ -197,6 +198,30 @@ type AgregatedState = {
     state: NNGameState;
     game: Game | null;
     network: Layer[];
+    trace: number[][] | null;
+    rankedMoves: number[] | null;
+}
+
+function animateNetwork(step: number, network: Layer[], trace: number[][] | null): Layer[] {
+    if (!trace) return network;
+    switch (step) {
+        case 0:
+            return network;
+        case 1:
+            network[1].activations = trace[1];
+            return network;
+        case 2:
+            network[2].activations = trace[2];
+            return network;
+        case 3:
+            network[3].activations = trace[3];
+            return network;
+        case 4:
+            network[4].activations = trace[4];
+            return network;
+        default:
+            return network;
+    }
 }
 
 function reducer(state: AgregatedState, action: Event): AgregatedState {
@@ -206,12 +231,26 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
                 state: NN_GAME_STATES.PLAYER_1_TURN,
                 game: action.payload.game,
                 network: getEmptyNetwork(),
+                trace: null,
+                rankedMoves: null,
             }
         case EVENT_TYPES.HUMAN_MOVE:
             return {
                 state: NN_GAME_STATES.PLAYER_2_TURN,
                 game: action.payload.game,
                 network: state.network,
+                trace: action.payload.trace,
+                rankedMoves: action.payload.rankedMoves,
+            }
+        case EVENT_TYPES.ANIMATION_STEP:
+            const step = action.payload.step;
+            action.payload.callback();
+            return {
+                state: step < 4 ? NN_GAME_STATES.ANIMATING : NN_GAME_STATES.PLAYER_1_TURN,
+                game: state.game,
+                network: animateNetwork(step, state.network, state.trace),
+                trace: state.trace,
+                rankedMoves: state.rankedMoves,
             }
         default:
             console.warn("Unknown event type");
@@ -223,7 +262,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
     const refLoading = useRef(false);
     const [hoveredCell, setHoveredCell] = useState<number | null>(null);
     const [hoveredNeuron, setHoveredNeuron] = useState<HoveredNeuron | null>(null);
-    const [state, dispatch] = useReducer(reducer, { state: NN_GAME_STATES.LOADING, game: null, network: getEmptyNetwork() });
+    const [state, dispatch] = useReducer(reducer, { state: NN_GAME_STATES.LOADING, game: null, network: getEmptyNetwork(), trace: null, rankedMoves: null });
     const bitBoard = useMemo(() => boardBitsFromHex(state.game?.boardState || "00000000"), [state.game?.boardState]);
     const { enqueue, processNext, isProcessing } = useEventQueue(async (event: Event) => {
         switch (event.type) {
@@ -235,6 +274,19 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
                 const { game, trace, rankedMoves } = await retry(async () => await sendMove(uuid, event.payload.position));
                 dispatch({ type: EVENT_TYPES.HUMAN_MOVE, payload: { game: game, trace: trace, rankedMoves: rankedMoves } });
                 break;
+            case EVENT_TYPES.ANIMATION_STEP:
+                const step = event.payload.step;
+                if (step === 0) {
+                    await sleep(10)
+                } else if (step === 1) {
+                    await sleep(1200)
+                } else {
+                    await sleep(100)
+                }
+                dispatch({ type: EVENT_TYPES.ANIMATION_STEP, payload: 
+                    {step: event.payload.step, callback: () => enqueue({type: EVENT_TYPES.ANIMATION_STEP, payload: {step: step + 1}})}
+                });
+                break;
             default:
                 console.warn("Unknown event type");
         }
@@ -245,12 +297,15 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
             refLoading.current = true;
             enqueue({ type: EVENT_TYPES.LOAD_GAME, payload: {} });
         }
+        if (state.state === NN_GAME_STATES.PLAYER_2_TURN) {
+            enqueue({ type: EVENT_TYPES.ANIMATION_STEP, payload: {step: 0} });
+        }
         if (!isProcessing) {
             processNext();
         }
         const interval = setInterval(() => processNext(), 100);
         return () => clearInterval(interval)
-    }, []);
+    }, [isProcessing, state.state]);
     if (state.state === NN_GAME_STATES.LOADING) {
         return <div>Loading...</div>
     }

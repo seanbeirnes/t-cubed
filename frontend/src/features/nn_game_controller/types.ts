@@ -24,7 +24,7 @@ export type NNGameState = typeof NN_GAME_STATES[keyof typeof NN_GAME_STATES];
 export const EVENT_TYPES = {
     LOAD_GAME: "LOAD_GAME",
     HUMAN_MOVE: "HUMAN_MOVE",
-    AI_MOVE: "AI_MOVE",
+    ANIMATION_STEP: "ANIMATION_STEP",
     TERMINAL_STATE: "TERMINAL_STATE",
 }
 
