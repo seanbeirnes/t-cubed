@@ -293,13 +293,13 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
                     });
                 })}
 
-                <TransitionMask
+                {/*<TransitionMask
                     key={`connections-mask-${offset}`}
                     config={config}
                     blocksPerRow={10}
                     shortenDuration={!expanded} // Duration is shorter when closing panel
                     hidden={expandedCount === 0}// Hide the mask when page is first loaded
-                />
+                />*/}
 
                 {/* Render the neurons for each layer */}
                 {

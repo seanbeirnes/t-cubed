@@ -52,6 +52,11 @@ function getContrastColor(hex: string): string {
     return contrastWithWhite > contrastWithBlack ? "#EEE" : "#333";
 }
 
+function activationToText(activation: number): string {
+    if (activation >= 100) return activation.toFixed(0);
+    if (activation >= 10) return activation.toFixed(1);
+    return activation.toFixed(2);
+}
 
 export default function Neuron({ x, y, fill, motionDelay, activation, showText = true, emphasized = false, onMouseEnter, onMouseLeave }: NeuronProps) {
     return (
@@ -101,7 +106,7 @@ export default function Neuron({ x, y, fill, motionDelay, activation, showText =
                     animate={{ opacity: activation === 0 ? 0 : activation + 0.1 }}
                     aria-hidden="true"
                 >
-                    {activation.toFixed(2)}
+                    {activationToText(activation)}
                 </motion.text>
             )}
             <motion.circle

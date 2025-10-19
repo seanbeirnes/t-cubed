@@ -300,12 +300,8 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
                 break;
             case EVENT_TYPES.ANIMATION_STEP:
                 const step = event.payload.step;
-                if (step === 0) {
-                    await sleep(10)
-                } else if (step === 1) {
-                    await sleep(1200)
-                } else {
-                    await sleep(100)
+                if (step > 0) {
+                    await sleep(200)
                 }
                 dispatch({ type: EVENT_TYPES.ANIMATION_STEP, payload: 
                     {step: event.payload.step, callback: () => enqueue({type: EVENT_TYPES.ANIMATION_STEP, payload: {step: step + 1}})}
@@ -330,6 +326,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
         const interval = setInterval(() => processNext(), 100);
         return () => clearInterval(interval)
     }, [isProcessing, state.state]);
+
     if (state.state === NN_GAME_STATES.LOADING) {
         return <div>Loading...</div>
     }
