@@ -121,8 +121,9 @@ func (s *GameService) GetGame(ctx context.Context, uuid uuid.UUID) (*Game, error
 }
 
 type NNMoveResult struct {
-	Game  *Game            `json:"game"`
-	Trace *ai.ForwardTrace `json:"trace"`
+	Game        *Game            `json:"game"`
+	Trace       *ai.ForwardTrace `json:"trace"`
+	RankedMoves []int            `json:"ranked_moves"`
 }
 
 // Plays a Neural Network move
@@ -210,11 +211,11 @@ func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID i
 	positions := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 
 	// Bubble sort the position and the output, by the output values
-	for i := range positions {
-		for j := i + 1; j < len(positions); j++ {
-			if output[j-1] > output[j] {
-				output[j-1], output[j] = output[j], output[j-1]
-				positions[j-1], positions[j] = positions[j], positions[j-1]
+	for i := 0; i < len(positions)-1; i++ {
+		for j := 0; j < len(positions)-i-1; j++ {
+			if output[j] < output[j+1] {
+				output[j], output[j+1] = output[j+1], output[j]
+				positions[j], positions[j+1] = positions[j+1], positions[j]
 			}
 		}
 	}
@@ -246,8 +247,9 @@ func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID i
 	}
 
 	return &NNMoveResult{
-		Game:  &game,
-		Trace: trace,
+		Game:        &game,
+		Trace:       trace,
+		RankedMoves: positions,
 	}, nil
 }
 

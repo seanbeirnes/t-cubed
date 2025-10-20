@@ -7,10 +7,13 @@ import { NNHoverStateContext} from "../../nn_game_controller";
 
 interface BoardGridProps {
     boardState: GameToken[];
+    rankedMoves: number[] | null;
     winningLine: number[] | null;
+    playMove: (position: number) => void;
+    humanToken: GameToken;
 }
 
-export function BoardGrid({ boardState, winningLine }: BoardGridProps) {
+export function BoardGrid({ boardState, rankedMoves, winningLine, playMove, humanToken }: BoardGridProps) {
     const hoverState = useContext(NNHoverStateContext);
     const onCellHover = (cell: number | null) => {
         if (cell !== null && (cell < 0 || cell > 8)) {
@@ -50,7 +53,9 @@ export function BoardGrid({ boardState, winningLine }: BoardGridProps) {
                     isWinning={!!winningLine?.includes(idx)}
                     emphasized={isEmphasized(idx)}
                     onHover={handleCellHover}
-                    moveRank={2}
+                    onClick={() => playMove(idx + 1)}
+                    moveRank={ rankedMoves ? rankedMoves.indexOf(idx + 1) + 1 : null}
+                    humanToken={humanToken}
                 />
             ))}
         </div>

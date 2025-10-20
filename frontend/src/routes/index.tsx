@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Brain, Swords, UserRound, ChevronRight } from 'lucide-react'
+import { Brain, Swords, ChevronRight } from 'lucide-react'
 import { GolangIcon, DockerIcon, ReactIcon, TailwindIcon, TypeScriptIcon } from '../shared/components'
 
 export const Route = createFileRoute('/')({
@@ -10,33 +10,29 @@ function Index() {
     return (
         <div className="h-screen w-full bg-slate-600 flex items-center justify-center overflow-clip">
             <div className="max-w-4xl w-full px-6">
-                <header className="flex flex-col items-center text-center gap-3 mb-10">
-                    <h1 className="text-4xl md:text-6xl font-extrabold text-amber-400 drop-shadow">
+                <header className="flex flex-col items-start gap-3 mb-10">
+                    <h1 className="w-full text-4xl text-center md:text-6xl font-extrabold text-amber-400 drop-shadow">
                         Welcome to T<sup>3</sup>
                     </h1>
-                    <p className="text-slate-200 text-base md:text-lg text-left">
-                        Tic-Tac-Toe, reimagined — play a friend, challenge Minimax, or experience a <span className="text-amber-400 drop-shadow">neural network</span> with beautiful live animations as you play against it!
+                    <p className="text-slate-200 text-base md:text-lg">
+                        Tic-Tac-Toe, reimagined! Challenge Minimax, a classic AI algorithm, or experience a <span className="text-amber-400 drop-shadow">neural network</span> with beautiful live animations as you play against it.
+                    </p>
+                    <p className="text-slate-200 text-base md:text-lg">
+                    Don't know what a neural network is? Challenge the Neural Net AI and see how it works!
                     </p>
                 </header>
 
                 <main className="flex flex-col items-center">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                         <NavCard 
-                            to="/game/human" 
-                            title="Challenge Friends" 
-                            description="Play a game online with anyone!"
-                            icon={<UserRound className="w-6 h-6" />} 
-                            color="from-green-500/20 to-green-400/10" ring="ring-green-400" />
-
-                        <NavCard 
-                            to="/game/minimax" 
+                            to="/game/newgame?gt=mm" 
                             title="Challenge Minimax AI"
                             description="Play against Minimax, a classic AI algorithm."
                             icon={<Swords className="w-6 h-6" />} 
                             color="from-blue-500/20 to-blue-400/10" ring="ring-blue-400" />
 
                         <NavCard
-                            to="/game/nn"
+                            to="/game/newgame?gt=nn"
                             title="Challenge Neural Net AI"
                             description="Play a neural network and see it in action!"
                             icon={<Brain className="w-6 h-6" />}
@@ -106,7 +102,7 @@ function NavCard({ to, title, description, icon, color, ring, featured = false }
         <Link
             to={to}
             className={[
-                "group relative rounded-2xl p-4 md:p-6",
+                "group relative rounded-2xl p-4 md:px-8 md:py-12",
                 "bg-gradient-to-br", color,
                 "backdrop-blur-sm",
                 "shadow-xl hover:shadow-2xl",

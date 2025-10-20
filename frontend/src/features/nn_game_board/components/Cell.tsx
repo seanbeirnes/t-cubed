@@ -7,9 +7,11 @@ import MoveRankBadge from "./MoveRankBadge";
 interface CellProps {
     index: number;
     token: GameToken;
+    humanToken: GameToken;
     isWinning: boolean;
     emphasized: boolean;
     onHover: (idx: number | null) => void;
+    onClick: () => void
     moveRank: number | null;
 }
 
@@ -24,7 +26,7 @@ const isBottomRightCell = (idx: number) => idx === 8;
  *
  * moveRank - The rank of the suggested move for the cell. This is used to display the move ranking badge.
  */
-export default function Cell({ index, token, isWinning, emphasized, onHover, moveRank}: CellProps) {
+export default function Cell({ index, token, humanToken, isWinning, emphasized, onHover, onClick, moveRank}: CellProps) {
     return (
         <div
             className="relative aspect-square"
@@ -35,6 +37,7 @@ export default function Cell({ index, token, isWinning, emphasized, onHover, mov
                 role="gridcell"
                 aria-label={`cell ${index + 1} ${token === "_" ? "empty" : token}`}
                 disabled={token === GAME_TOKENS.O || token === GAME_TOKENS.X}
+                onClick={onClick}
                 className={[
                     "w-full h-full flex items-center justify-center select-none",
                     "transition-all duration-200",
@@ -45,7 +48,7 @@ export default function Cell({ index, token, isWinning, emphasized, onHover, mov
                     isTopRightCell(index) ? "rounded-tr-xl" : "",
                     isBottomLeftCell(index) ? "rounded-bl-xl" : "",
                     isBottomRightCell(index) ? "rounded-br-xl" : "",
-                    token === "_" ? "cursor-pointer hover:bg-slate-700/40 active:bg-slate-400/40 active:shadow-inner" : "",
+                    token === "_" ? "cursor-pointer hover:bg-slate-700/40 active:bg-slate-400/40 active:shadow-inner" : "cursor-not-allowed",
                     "border-2",
                     emphasized ? "border-amber-400/95" : "border-amber-400/0",
                     isWinning ? "bg-gradient-to-br from-amber-500/10 to-amber-400/5" : "",
@@ -58,9 +61,9 @@ export default function Cell({ index, token, isWinning, emphasized, onHover, mov
                     </div>
                 )}
 
-                <TokenView token={token} />
+                <TokenView token={token} humanToken={humanToken} />
 
-                {token !== null && token === GAME_TOKENS.EMPTY && <MoveRankBadge token={token} rank={moveRank} />}
+                {token !== null && moveRank !== null && <MoveRankBadge token={token} rank={moveRank} />}
             </button>
         </div>
     );

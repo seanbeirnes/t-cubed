@@ -2,11 +2,18 @@ import type { GameToken } from "../../../shared/types";
 import { GAME_TOKENS } from "../../../shared/types";
 
 interface BoardHeaderProps {
+    gameTitle: string | undefined;
   humanToken: GameToken;
   aiToken: GameToken;
 }
 
-export function BoardHeader({ humanToken, aiToken }: BoardHeaderProps) {
+export function BoardHeader({ gameTitle,  humanToken, aiToken }: BoardHeaderProps) {
+    if (!gameTitle) {
+        gameTitle = "Tic Tac Toe"
+    }
+    if (gameTitle.length > 30) {
+        gameTitle = gameTitle.slice(0, 30) + "..."
+    }
     if (humanToken === aiToken) {
         console.warn("Human and AI tokens are the same");
         return null;
@@ -19,7 +26,7 @@ export function BoardHeader({ humanToken, aiToken }: BoardHeaderProps) {
   return (
     <div className="flex items-center justify-between mb-2">
       <h2 className="text-amber-400 font-semibold tracking-wide text-sm md:text-base drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]">
-        Tic Tac Toe
+        {gameTitle}
       </h2>
       <div className="text-xs md:text-sm text-slate-300/80">
         <span className="mr-3">

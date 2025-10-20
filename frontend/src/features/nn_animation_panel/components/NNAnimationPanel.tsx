@@ -1,18 +1,16 @@
 import { useContext, useState } from "react";
 
-import type { Layer, LayerType, NeuronFill } from "../types";
+import type { Layer, LayerType, NeuronFill, OverrideExpandedState } from "../types";
 import type { HoveredNeuron } from "../../nn_game_controller";
 import type { AppState } from "../../../shared/types";
-import { LAYER_TYPES, NEURON_FILLS } from "../types";
+import { LAYER_TYPES, NEURON_FILLS, OVERRIDE_EXPANDED_STATE } from "../types";
 
 import { ChevronsUpDown, ChevronsDownUp, ArrowUp, ArrowDown } from "lucide-react";
 
 import { AppStateContext } from "../../../App";
-import { NNGameStateContext } from "../../nn_game_controller";
 import { NNHoverStateContext } from "../../nn_game_controller";
 import Neuron from "./Neuron";
 import Connection from "./Connection";
-import TransitionMask from "./TransitionMask";
 
 const PADDING: number = 2;
 const INNER_PADDING: number = 1;
@@ -22,6 +20,8 @@ const WINDOW_WIDTH_THRESHOLD: number = 768;
 
 interface NNAnimationPanelProps {
     width: number;
+    network: Layer[];
+    overrideExpandedState?: OverrideExpandedState;
 }
 
 export type Config = {
@@ -137,13 +137,18 @@ function isHoveredNeuronInInputLayerPlayer2(hoveredNeuron: HoveredNeuron | null)
     return hoveredNeuron !== null && hoveredNeuron.layerIndex === 0 && hoveredNeuron.neuronIndex >= 9;
 }
 
-export default function NNAnimationPanel({ width }: NNAnimationPanelProps) {
+// Get the largest activation value in the layer to help normalize the opacity/colors of the neurons
+function getLayerActivationMax(layer: Layer): number {
+    if (!layer.activations) return 0;
+    return Math.max(...layer.activations);
+}
+
+export default function NNAnimationPanel({ width, network, overrideExpandedState = OVERRIDE_EXPANDED_STATE.NONE }: NNAnimationPanelProps) {
     const appState: AppState = useContext(AppStateContext);
-    const gameState = useContext(NNGameStateContext);
     const hoverState = useContext(NNHoverStateContext);
     const showNeuronText: boolean = appState.window.width > WINDOW_WIDTH_THRESHOLD;
 
-    const config: Config = getConfig(width, gameState.network);
+    const config: Config = getConfig(width, network);
 
     const offsetOpen: number = 0;
     const offsetClosed: number = -(config.totalLayers - 1) * (config.neuronWidth + config.layerSpacing);
@@ -189,6 +194,13 @@ export default function NNAnimationPanel({ width }: NNAnimationPanelProps) {
         }
     }
 
+    if (overrideExpandedState === "open" && offset === offsetClosed) {
+        toggleExpanded();
+    }
+    if (overrideExpandedState === "closed" && offset === offsetOpen) {
+        toggleExpanded();
+    }
+
     return (
         <div id="nn-animation-panel" style={
             {
@@ -205,8 +217,11 @@ export default function NNAnimationPanel({ width }: NNAnimationPanelProps) {
         >
             <div className={`grid grid-cols-2 md:grid-cols-8 justify-items-center gap-[2vw]`}>
                 <button
-                    className={`col-span-1 ${appState.window.width < WINDOW_WIDTH_THRESHOLD ? "hidden" : ""} 
-                    justify-self-start min-w-[2vw] px-6 py-1 outline-2 outline-amber-500 text-amber-500 bg-slate-500 hover:text-amber-400 hover:outline-amber-400 hover:bg-slate-400 active:text-amber-600 active:bg-slate-600 transition-all duration-200 shadow-inner rounded-full`}
+                    className={`col-span-1 justify-self-start min-w-[2vw] px-6 py-1 outline-2 outline-amber-500 text-amber-500 bg-slate-500 transition-all duration-200 
+                    ${appState.window.width < WINDOW_WIDTH_THRESHOLD ? "hidden" : ""} 
+                    ${overrideExpandedState === OVERRIDE_EXPANDED_STATE.OPEN || overrideExpandedState === OVERRIDE_EXPANDED_STATE.CLOSED ? "opacity-50 cursor-not-allowed" : ""}
+                    ${overrideExpandedState === OVERRIDE_EXPANDED_STATE.NONE ? "hover:text-amber-400 hover:outline-amber-400 hover:bg-slate-400 active:text-amber-600 active:bg-slate-600" : ""} 
+                    shadow-inner rounded-full`}
                     onClick={toggleExpanded}
                     onKeyDown={(e) => {
                         if (e.key === "Escape") {
@@ -216,6 +231,7 @@ export default function NNAnimationPanel({ width }: NNAnimationPanelProps) {
                     aria-controls="nn-animation-panel"
                     aria-label={expanded ? "Close neural network animation panel" : "Open neural network animation panel"}
                     title={expanded ? "Close neural network animation panel" : "Open neural network animation panel"}
+                    disabled={overrideExpandedState === "open" || overrideExpandedState === "closed"}
                 >
                     {expanded ? <ChevronsDownUp className="w-full h-full" /> : <ChevronsUpDown className="w-full h-full" />}
                 </button>
@@ -250,10 +266,11 @@ export default function NNAnimationPanel({ width }: NNAnimationPanelProps) {
             </div>
             <svg aria-label="Neural network diagram" width={`${config.innerWidth}vw`} height={`${config.innerHeight}vw`}>
                 {/* Render the connections between neurons first so they are behind the neurons */}
-                {gameState.network.map((layer, i) => {
-                    if (i === gameState.network.length - 1) return null; // last layer has no outgoing connections
+                {network.map((layer, i) => {
+                    if (i === network.length - 1) return null; // last layer has no outgoing connections
 
-                    const nextLayer = gameState.network[i + 1];
+                    const nextLayer = network[i + 1];
+                    const layerActivationMax = getLayerActivationMax(layer) * getLayerActivationMax(nextLayer);
 
                     return Array.from({ length: layer.size }).flatMap((_, j) => {
                         const x1 = getNeuronX(j, layer.size, config);
@@ -275,6 +292,7 @@ export default function NNAnimationPanel({ width }: NNAnimationPanelProps) {
                                     x2={x2}
                                     y2={y2}
                                     activation={intensity}
+                                    maxActivation={layerActivationMax}
                                     hidden={!expanded}
                                 />
                             );
@@ -282,18 +300,19 @@ export default function NNAnimationPanel({ width }: NNAnimationPanelProps) {
                     });
                 })}
 
-                <TransitionMask
+                {/*<TransitionMask
                     key={`connections-mask-${offset}`}
                     config={config}
                     blocksPerRow={10}
                     shortenDuration={!expanded} // Duration is shorter when closing panel
                     hidden={expandedCount === 0}// Hide the mask when page is first loaded
-                />
+                />*/}
 
                 {/* Render the neurons for each layer */}
                 {
-                    gameState.network.map((layer, i) => {
+                    network.map((layer, i) => {
                         const layerType: LayerType = getLayerType(i, config.totalLayers);
+                        const layerActivationMax = getLayerActivationMax(layer);
                         return (
                             <g key={`layer-${i}`} role="treeitem" aria-label={getLayerAltText(i, layerType)}>
                                 {
@@ -307,6 +326,7 @@ export default function NNAnimationPanel({ width }: NNAnimationPanelProps) {
                                                 fill={getNeruonFill(layerType, j)}
                                                 motionDelay={getMotionDelay(i, j)}
                                                 activation={activation}
+                                                maxActivation={layerActivationMax}
                                                 showText={showNeuronText}
                                                 emphasized={isEmphasized(i, j)}
                                                 onMouseEnter={() => handleNeuronHover({ layerIndex: i, neuronIndex: j })}

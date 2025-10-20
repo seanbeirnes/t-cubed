@@ -2,7 +2,7 @@ package engine
 
 const (
 	PIECE_X = 'X'
-	PIECE_O = '0'
+	PIECE_O = 'O'
 )
 
 const (
