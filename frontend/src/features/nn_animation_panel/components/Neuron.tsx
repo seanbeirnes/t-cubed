@@ -22,6 +22,7 @@ interface NeuronProps {
     fill: NeuronFill;
     motionDelay: number;
     activation: number;
+    maxActivation: number;
     showText?: boolean;
     emphasized?: boolean;
     onMouseEnter?: () => void;
@@ -58,7 +59,7 @@ function activationToText(activation: number): string {
     return activation.toFixed(2);
 }
 
-export default function Neuron({ x, y, fill, motionDelay, activation, showText = true, emphasized = false, onMouseEnter, onMouseLeave }: NeuronProps) {
+export default function Neuron({ x, y, fill, motionDelay, activation, maxActivation, showText = true, emphasized = false, onMouseEnter, onMouseLeave }: NeuronProps) {
     return (
         <g
             aria-label={`Activation: ${activation.toFixed(2)}`}
@@ -74,7 +75,7 @@ export default function Neuron({ x, y, fill, motionDelay, activation, showText =
                 initial="hidden"
                 whileInView="visible"
                 variants={nodeAnimationProps}
-                animate={{ opacity: activation ** 2 }}
+                animate={{ opacity: (activation/maxActivation) ** 2 }}
                 aria-hidden="true"
             /> }
             <motion.circle
@@ -88,7 +89,7 @@ export default function Neuron({ x, y, fill, motionDelay, activation, showText =
                 initial="hidden"
                 whileInView="visible"
                 variants={nodeAnimationProps}
-                animate={{ fillOpacity: (activation ** 2 + 0.15) * 0.6 }}
+                animate={{ fillOpacity: activation === 0 ? 0 : ((activation/maxActivation) ** 2 + 0.15) * 0.6 }}
                 aria-hidden="true"
             />
             {showText && (
@@ -103,7 +104,7 @@ export default function Neuron({ x, y, fill, motionDelay, activation, showText =
                     initial="hidden"
                     whileInView="visible"
                     variants={nodeAnimationProps}
-                    animate={{ opacity: activation === 0 ? 0 : activation + 0.1 }}
+                    animate={{ opacity: activation === 0 ? 0 : (activation/maxActivation) + 0.5 }}
                     aria-hidden="true"
                 >
                     {activationToText(activation)}

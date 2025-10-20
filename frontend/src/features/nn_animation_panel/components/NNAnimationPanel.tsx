@@ -11,7 +11,6 @@ import { AppStateContext } from "../../../App";
 import { NNHoverStateContext } from "../../nn_game_controller";
 import Neuron from "./Neuron";
 import Connection from "./Connection";
-import TransitionMask from "./TransitionMask";
 
 const PADDING: number = 2;
 const INNER_PADDING: number = 1;
@@ -136,6 +135,12 @@ function isHoveredNeuronInInputLayerPlayer1(hoveredNeuron: HoveredNeuron | null)
 
 function isHoveredNeuronInInputLayerPlayer2(hoveredNeuron: HoveredNeuron | null): boolean {
     return hoveredNeuron !== null && hoveredNeuron.layerIndex === 0 && hoveredNeuron.neuronIndex >= 9;
+}
+
+// Get the largest activation value in the layer to help normalize the opacity/colors of the neurons
+function getLayerActivationMax(layer: Layer): number {
+    if (!layer.activations) return 0;
+    return Math.max(...layer.activations);
 }
 
 export default function NNAnimationPanel({ width, network, overrideExpandedState = OVERRIDE_EXPANDED_STATE.NONE }: NNAnimationPanelProps) {
@@ -265,6 +270,7 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
                     if (i === network.length - 1) return null; // last layer has no outgoing connections
 
                     const nextLayer = network[i + 1];
+                    const layerActivationMax = getLayerActivationMax(layer) * getLayerActivationMax(nextLayer);
 
                     return Array.from({ length: layer.size }).flatMap((_, j) => {
                         const x1 = getNeuronX(j, layer.size, config);
@@ -286,6 +292,7 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
                                     x2={x2}
                                     y2={y2}
                                     activation={intensity}
+                                    maxActivation={layerActivationMax}
                                     hidden={!expanded}
                                 />
                             );
@@ -305,6 +312,7 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
                 {
                     network.map((layer, i) => {
                         const layerType: LayerType = getLayerType(i, config.totalLayers);
+                        const layerActivationMax = getLayerActivationMax(layer);
                         return (
                             <g key={`layer-${i}`} role="treeitem" aria-label={getLayerAltText(i, layerType)}>
                                 {
@@ -318,6 +326,7 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
                                                 fill={getNeruonFill(layerType, j)}
                                                 motionDelay={getMotionDelay(i, j)}
                                                 activation={activation}
+                                                maxActivation={layerActivationMax}
                                                 showText={showNeuronText}
                                                 emphasized={isEmphasized(i, j)}
                                                 onMouseEnter={() => handleNeuronHover({ layerIndex: i, neuronIndex: j })}

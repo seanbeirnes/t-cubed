@@ -4,6 +4,7 @@ interface ConnectionProps {
     x2: number;
     y2: number;
     activation: number;
+    maxActivation: number;
     hidden?: boolean;
 }
 
@@ -19,7 +20,7 @@ function getLineColor(activation: number): string {
   return `rgb(${r},${g},${b})`;
 }
 
-export default function Connection({ x1, y1, x2, y2, activation , hidden=false }: ConnectionProps) {
+export default function Connection({ x1, y1, x2, y2, activation, maxActivation, hidden=false }: ConnectionProps) {
     if (activation === 0) return null;
     return (
         <line
@@ -28,7 +29,7 @@ export default function Connection({ x1, y1, x2, y2, activation , hidden=false }
             x2={`${x2}vw`}
             y2={`${y2}vw`}
             stroke={getLineColor(activation)}
-            strokeOpacity={(activation + 0.15) * 0.6}
+            strokeOpacity={(activation/maxActivation) ** 4 + 0.1}
             strokeWidth={1}
             className={`${hidden ? "hidden" : ""}`}
             style={{
