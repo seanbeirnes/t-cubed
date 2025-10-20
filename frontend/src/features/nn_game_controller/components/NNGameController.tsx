@@ -234,10 +234,12 @@ function animateNetwork(step: number, boardState: string, network: Layer[], trac
 function reducer(state: AgregatedState, action: Event): AgregatedState {
     switch (action.type) {
         case EVENT_TYPES.LOAD_GAME:
+            const newNetwork = getEmptyNetwork();
+            setInputLayerActivations(newNetwork, boardBitsFromHex(action.payload.game.boardState));
             return {
                 state: action.payload.game.terminalState > 0 ? NN_GAME_STATES.GAME_OVER : NN_GAME_STATES.PLAYER_1_TURN,
                 game: action.payload.game,
-                network: getEmptyNetwork(),
+                network: newNetwork,
                 trace: null,
                 rankedMoves: null,
             }
@@ -255,7 +257,7 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
             const step = action.payload.step;
             const prevGameState = state.game;
             const nextGameState = action.payload.newGameState;
-            // Update Player 1's board state
+            // Keep AI move from showing in Player 1's board state
             if (step === 0 && prevGameState) {
                 const newHumanBoardState = nextGameState.boardState.slice(0, 4)
                 const prevComputerBoardState = prevGameState.boardState.slice(4, 8)
@@ -286,7 +288,7 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
             return {
                 state: nextState,
                 game: step === 4 ? nextGameState : prevGameState,
-                network: animateNetwork(step, nextGameState?.boardState || "00000000", state.network, state.trace),
+                network: animateNetwork(step, prevGameState?.boardState || "00000000", state.network, state.trace),
                 trace: state.trace,
                 rankedMoves: state.rankedMoves,
             }
@@ -302,6 +304,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
     const [hoveredNeuron, setHoveredNeuron] = useState<HoveredNeuron | null>(null);
     const [state, dispatch] = useReducer(reducer, { state: NN_GAME_STATES.LOADING, game: null, network: getEmptyNetwork(), trace: null, rankedMoves: null });
     const bitBoard = useMemo(() => boardBitsFromHex(state.game?.boardState || "00000000"), [state.game?.boardState]);
+
     const { enqueue, processNext, isProcessing } = useEventQueue(async (event: Event) => {
         switch (event.type) {
             case EVENT_TYPES.LOAD_GAME:
@@ -357,8 +360,6 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
     if (state.state === NN_GAME_STATES.ERROR) {
         return <ErrorMessage />
     }
-
-    setInputLayerActivations(state.network, bitBoard)
 
     return (
         <NNHoverStateContext.Provider value={{
