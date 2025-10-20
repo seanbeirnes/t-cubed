@@ -1,4 +1,4 @@
-import { createContext, useEffect, useMemo, useReducer, useRef, useState} from "react";
+import { createContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import useEventQueue from "../hooks/useEventQueue";
 
 import retry from "../../../shared/utils/retry";
@@ -132,7 +132,7 @@ async function sendMove(uuid: string, position: number): Promise<{ game: Game, t
             terminalState: data.game.terminal_state,
             uuid: data.game.uuid,
         },
-        trace: data.trace.layerOutputs,
+        trace: data.trace !== null ? data.trace.layerOutputs : null,
         rankedMoves: data.ranked_moves,
     }
 }
@@ -237,21 +237,30 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
                 rankedMoves: null,
             }
         case EVENT_TYPES.HUMAN_MOVE:
+            const newGameState = action.payload.game;
+            action.payload.callback(newGameState);
             return {
                 state: NN_GAME_STATES.PLAYER_2_TURN,
-                game: action.payload.game,
+                game: state.game,
                 network: state.network,
                 trace: action.payload.trace,
                 rankedMoves: action.payload.rankedMoves,
             }
         case EVENT_TYPES.ANIMATION_STEP:
             const step = action.payload.step;
-            const game = state.game;
+            const prevGameState = state.game;
+            const nextGameState = action.payload.newGameState;
+            // Update Player 1's board state
+            if (step === 0 && prevGameState) {
+                const newHumanBoardState = nextGameState.boardState.slice(0, 4)
+                const prevComputerBoardState = prevGameState.boardState.slice(4, 8)
+                prevGameState.boardState = newHumanBoardState.concat(prevComputerBoardState)
+            }
             // Handle the game ending before AI's turn
-            if (game?.terminalState === 1) {
+            if (nextGameState?.terminalState === 1) {
                 return {
                     state: NN_GAME_STATES.GAME_OVER,
-                    game: game,
+                    game: nextGameState,
                     network: state.network,
                     trace: state.trace,
                     rankedMoves: state.rankedMoves,
@@ -259,20 +268,20 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
             }
 
             // Append the next animation step to the queue
-            if (step < 4) action.payload.callback();
+            if (step < 4) action.payload.callback(nextGameState);
 
             // Handle the game ending after AI's turn
             let nextState = NN_GAME_STATES.ANIMATING;
-            if (step > 3 && game?.terminalState === 0) {
+            if (step > 3 && nextGameState?.terminalState === 0) {
                 nextState = NN_GAME_STATES.PLAYER_1_TURN;
             }
-            if (step > 3 && (game?.terminalState === 2 || game?.terminalState === 3)) {
+            if (step > 3 && (nextGameState?.terminalState === 2 || nextGameState?.terminalState === 3)) {
                 nextState = NN_GAME_STATES.GAME_OVER;
             }
             return {
                 state: nextState,
-                game: game,
-                network: animateNetwork(step, game?.boardState || "00000000", state.network, state.trace),
+                game: step === 4 ? nextGameState : prevGameState,
+                network: animateNetwork(step, nextGameState?.boardState || "00000000", state.network, state.trace),
                 trace: state.trace,
                 rankedMoves: state.rankedMoves,
             }
@@ -296,15 +305,23 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
                 break;
             case EVENT_TYPES.HUMAN_MOVE:
                 const { game, trace, rankedMoves } = await retry(async () => await sendMove(uuid, event.payload.position));
-                dispatch({ type: EVENT_TYPES.HUMAN_MOVE, payload: { game: game, trace: trace, rankedMoves: rankedMoves } });
+                dispatch({ type: EVENT_TYPES.HUMAN_MOVE, payload: { game: game, trace: trace, rankedMoves: rankedMoves, callback: event.payload.callback } });
                 break;
             case EVENT_TYPES.ANIMATION_STEP:
                 const step = event.payload.step;
                 if (step > 0) {
                     await sleep(200)
                 }
-                dispatch({ type: EVENT_TYPES.ANIMATION_STEP, payload: 
-                    {step: event.payload.step, callback: () => enqueue({type: EVENT_TYPES.ANIMATION_STEP, payload: {step: step + 1}})}
+                dispatch({
+                    type: EVENT_TYPES.ANIMATION_STEP, payload:
+                    {
+                        step: event.payload.step,
+                        newGameState: event.payload.newGameState,
+                        callback: (newGameState: Game) => enqueue({
+                            type: EVENT_TYPES.ANIMATION_STEP,
+                            payload: { step: step + 1, newGameState: newGameState }
+                        })
+                    }
                 });
                 break;
             default:
@@ -316,9 +333,6 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
         if (state.state === NN_GAME_STATES.LOADING && !refLoading.current) {
             refLoading.current = true;
             enqueue({ type: EVENT_TYPES.LOAD_GAME, payload: {} });
-        }
-        if (state.state === NN_GAME_STATES.PLAYER_2_TURN) {
-            enqueue({ type: EVENT_TYPES.ANIMATION_STEP, payload: {step: 0} });
         }
         if (!isProcessing) {
             processNext();
@@ -352,11 +366,16 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
             </p>
             <NNGameBoard
                 gameTitle={state.game?.name}
-                boardState={state.state !== NN_GAME_STATES.PLAYER_1_TURN ? Array(32).fill(0) : bitBoard}
+                boardState={bitBoard}
                 p1Piece={state.game?.player1Piece}
                 p2Piece={state.game?.player2Piece}
                 playMove={(position: number) => {
-                    enqueue({ type: EVENT_TYPES.HUMAN_MOVE, payload: { position: position } });
+                    enqueue({
+                        type: EVENT_TYPES.HUMAN_MOVE, payload: {
+                            position: position,
+                            callback: (newGameState: Game) => enqueue({ type: EVENT_TYPES.ANIMATION_STEP, payload: { step: 0, newGameState: newGameState } })
+                        }
+                    });
                 }}
             />
             <NNAnimationPanel width={animationPanelWidth} network={state.network} overrideExpandedState={getOverrideExpandedState(state.state, state.network)} />
