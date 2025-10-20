@@ -370,6 +370,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
             </p>
             <NNGameBoard
                 gameTitle={state.game?.name}
+                gameState={state.state}
                 boardState={bitBoard}
                 p1Piece={state.game?.player1Piece}
                 p2Piece={state.game?.player2Piece}

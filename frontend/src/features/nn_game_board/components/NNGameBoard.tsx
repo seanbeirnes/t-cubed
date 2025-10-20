@@ -8,6 +8,7 @@ import BoardFrame from "./BoardFrame";
 import InfoBlurb from "./InfoBlurb";
 
 import { getWinningLine, validateBoardState, validateTokens } from "./utils";
+import { NN_GAME_STATES, type NNGameState } from "../../nn_game_controller/types";
 
 // Converts a 32-bit array (16 bits P1, 16 bits P2) to GameToken[] of len 9
 // Least significant bit is first
@@ -43,6 +44,7 @@ function boardStateFromBits(bits: number[], p1Piece: GameToken, p2Piece: GameTok
 
 interface NNGameBoardProps {
     gameTitle: string | undefined;
+    gameState: NNGameState | null;
     boardState: number[] | null;
     rankedMoves: number[] | null;
     p1Piece: string | undefined; // Human
@@ -50,7 +52,7 @@ interface NNGameBoardProps {
     playMove: (position: number) => void;
 }
 
-export default function NNGameBoard({ gameTitle, boardState, rankedMoves, p1Piece, p2Piece, playMove }: NNGameBoardProps) {
+export default function NNGameBoard({ gameTitle, gameState, boardState, rankedMoves, p1Piece, p2Piece, playMove }: NNGameBoardProps) {
     if (!boardState || !p1Piece || !p2Piece) {
         boardState = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
         p1Piece = "X"
@@ -75,6 +77,9 @@ export default function NNGameBoard({ gameTitle, boardState, rankedMoves, p1Piec
             aria-label="Tic Tac Toe game board"
             role="region"
         >
+            {/* Apply an overlay to the board when the AI is thinking */}
+            { gameState === NN_GAME_STATES.ANIMATING || gameState === NN_GAME_STATES.PLAYER_2_TURN ? 
+                <div className="absolute top-0 z-10 w-full h-full bg-gradient-to-br from-slate-800/20 via-slate-600/20 to-slate-900/20" /> : null }
             <div className="absolute -inset-10 bg-gradient-to-br from-slate-800 via-slate-600 to-slate-900" />
 
             <div className="relative p-4">
