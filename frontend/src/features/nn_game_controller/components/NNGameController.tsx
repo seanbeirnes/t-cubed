@@ -373,6 +373,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
                 boardState={bitBoard}
                 p1Piece={state.game?.player1Piece}
                 p2Piece={state.game?.player2Piece}
+                rankedMoves={state.rankedMoves}
                 playMove={(position: number) => {
                     enqueue({
                         type: EVENT_TYPES.HUMAN_MOVE, payload: {

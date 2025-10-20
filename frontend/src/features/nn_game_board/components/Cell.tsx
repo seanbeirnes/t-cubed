@@ -63,7 +63,7 @@ export default function Cell({ index, token, humanToken, isWinning, emphasized, 
 
                 <TokenView token={token} humanToken={humanToken} />
 
-                {token !== null && token === GAME_TOKENS.EMPTY && <MoveRankBadge token={token} rank={moveRank} />}
+                {token !== null && moveRank !== null && <MoveRankBadge token={token} rank={moveRank} />}
             </button>
         </div>
     );

@@ -1,11 +1,11 @@
-import type { Token } from "./utils";
+import type { GameToken } from "../../../shared/types";
 
 interface MoveRankBadgeProps {
-  token: Token;
+  token: GameToken;
   rank?: number | null;
 }
 
-export function MoveRankBadge({ token, rank = 2 }: MoveRankBadgeProps) {
+export function MoveRankBadge({ token, rank }: MoveRankBadgeProps) {
   if (rank == null) return null;
 
   const filled = token === "_";
