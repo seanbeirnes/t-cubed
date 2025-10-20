@@ -9,6 +9,7 @@ import InfoBlurb from "./InfoBlurb";
 
 import { getWinningLine, validateBoardState, validateTokens } from "./utils";
 import { NN_GAME_STATES, type NNGameState } from "../../nn_game_controller/types";
+import { useState } from "react";
 
 // Converts a 32-bit array (16 bits P1, 16 bits P2) to GameToken[] of len 9
 // Least significant bit is first
@@ -53,8 +54,9 @@ interface NNGameBoardProps {
 }
 
 export default function NNGameBoard({ gameTitle, gameState, boardState, rankedMoves, p1Piece, p2Piece, playMove }: NNGameBoardProps) {
+    const [clicked, setClicked] = useState(false);
     if (!boardState || !p1Piece || !p2Piece) {
-        boardState = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        boardState = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         p1Piece = "X"
         p2Piece = "O"
     }
@@ -78,15 +80,32 @@ export default function NNGameBoard({ gameTitle, gameState, boardState, rankedMo
             role="region"
         >
             {/* Apply an overlay to the board when the AI is thinking */}
-            { gameState === NN_GAME_STATES.ANIMATING || gameState === NN_GAME_STATES.PLAYER_2_TURN ? 
-                <div className="absolute top-0 z-10 w-full h-full bg-gradient-to-br from-slate-800/20 via-slate-600/20 to-slate-900/20" /> : null }
+            {clicked || gameState === NN_GAME_STATES.ANIMATING || gameState === NN_GAME_STATES.PLAYER_2_TURN ?
+                <div className="absolute top-0 z-50 w-full h-full bg-gradient-to-br from-slate-800/50 via-slate-600/50 to-slate-900/50 animate-pulse" /> : null}
             <div className="absolute -inset-10 bg-gradient-to-br from-slate-800 via-slate-600 to-slate-900" />
 
             <div className="relative p-4">
                 <BoardHeader gameTitle={gameTitle} humanToken={p1Piece} aiToken={p2Piece} />
 
                 <BoardFrame ariaLabel="3 by 3 game board">
-                    <BoardGrid boardState={board} rankedMoves={rankedMoves} winningLine={winningLine} playMove={playMove} humanToken={p1Piece} />
+                    <BoardGrid
+                        boardState={board}
+                        rankedMoves={rankedMoves}
+                        winningLine={winningLine}
+                        playMove={(position: number) => {
+                            // Don't allow user to click more than once or when the AI is thinking
+                            if (clicked || gameState === NN_GAME_STATES.ANIMATING || gameState === NN_GAME_STATES.PLAYER_2_TURN) {
+                                return;
+                            }
+                            // Don't allow user to click when the game is over
+                            if (gameState === NN_GAME_STATES.GAME_OVER) {
+                                return;
+                            }
+                            setClicked(true)
+                            playMove(position)
+                            setTimeout(() => setClicked(false), 2500)
+                        }}
+                        humanToken={p1Piece} />
                 </BoardFrame>
 
                 <InfoBlurb />

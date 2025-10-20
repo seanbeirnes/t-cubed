@@ -20,6 +20,8 @@ const initialHoverState: NNHoverState = {
     setHoveredNeuron: null,
 }
 
+const ANIMATION_STEP_DELAY = 500;
+
 export const NNHoverStateContext = createContext<NNHoverState>(initialHoverState);
 
 const hexToBitsMap: Record<string, number[]> = {
@@ -156,6 +158,9 @@ function getOverrideExpandedState(gameState: NNGameState, network: Layer[]): Ove
         case NN_GAME_STATES.ANIMATING:
             // While the AI is animating, keep the panel open
             return OVERRIDE_EXPANDED_STATE.OPEN
+        case NN_GAME_STATES.GAME_OVER:
+            // If the game is over, disable expanding the panel
+            return OVERRIDE_EXPANDED_STATE.CLOSED
         default:
             return OVERRIDE_EXPANDED_STATE.NONE
     }
@@ -230,7 +235,7 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
     switch (action.type) {
         case EVENT_TYPES.LOAD_GAME:
             return {
-                state: NN_GAME_STATES.PLAYER_1_TURN,
+                state: action.payload.game.terminalState > 0 ? NN_GAME_STATES.GAME_OVER : NN_GAME_STATES.PLAYER_1_TURN,
                 game: action.payload.game,
                 network: getEmptyNetwork(),
                 trace: null,
@@ -310,7 +315,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
             case EVENT_TYPES.ANIMATION_STEP:
                 const step = event.payload.step;
                 if (step > 0) {
-                    await sleep(200)
+                    await sleep(ANIMATION_STEP_DELAY)
                 }
                 dispatch({
                     type: EVENT_TYPES.ANIMATION_STEP, payload:

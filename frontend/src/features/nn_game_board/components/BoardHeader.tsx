@@ -11,6 +11,9 @@ export function BoardHeader({ gameTitle,  humanToken, aiToken }: BoardHeaderProp
     if (!gameTitle) {
         gameTitle = "Tic Tac Toe"
     }
+    if (gameTitle.length > 30) {
+        gameTitle = gameTitle.slice(0, 30) + "..."
+    }
     if (humanToken === aiToken) {
         console.warn("Human and AI tokens are the same");
         return null;
