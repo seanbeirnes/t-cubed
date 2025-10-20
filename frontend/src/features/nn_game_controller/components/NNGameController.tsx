@@ -342,7 +342,11 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
     }, [isProcessing, state.state]);
 
     if (state.state === NN_GAME_STATES.LOADING) {
-        return <div>Loading...</div>
+        return (
+            <div className="flex flex-col items-center justify-center w-100 h-124 bg-slate-500/60 rounded-xl shadow-2xl">
+                <p className="text-center text-amber-500 text-shadow-md text-shadow-amber-900 animate-ping">Loading...</p>
+            </div>
+        )
     }
 
     if (state.state === NN_GAME_STATES.ERROR) {
@@ -358,7 +362,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
             setHoveredCell,
             setHoveredNeuron,
         }} >
-            <p className={`w-100 px-4 py-2 mb-2 border-2 border-amber-500/80 rounded-full 
+            <p className={`w-82 md:w-102 px-4 py-2 mb-2 border-2 border-amber-500/80 rounded-full 
                 text-2xl text-center text-amber-500 bg-slate-500 text-shadow-md text-shadow-amber-900 
                 ${state.state === NN_GAME_STATES.PLAYER_2_TURN || state.state === NN_GAME_STATES.ANIMATING ? "animate-pulse" : ""}
                 shadow-inner`}>
