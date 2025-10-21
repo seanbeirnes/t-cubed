@@ -35,10 +35,15 @@ func applyRoutes(config *Config, engine *gin.Engine, handler *handler.Handler) {
 		middleware.NewGzip(),
 	)
 
-	// Index
-	engine.GET("/", func(c *gin.Context) {
+	// Static files for container deployment
+	if !config.DEV_MODE {
+		engine.Use(middleware.NewStatic())
+	}
+
+	// Health check
+	engine.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "index",
+			"status": "ok",
 		})
 	})
 
