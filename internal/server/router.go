@@ -10,6 +10,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	INDEX_HTML = "./static/index.html"
+)
+
 func newRouter(config *Config) *gin.Engine {
 	// Set up server and routes
 	gin.SetMode(config.GIN_MODE)
@@ -46,6 +50,20 @@ func applyRoutes(config *Config, engine *gin.Engine, handler *handler.Handler) {
 			"status": "ok",
 		})
 	})
+
+	// Game client
+	{
+		gameClient := engine.Group("/game")
+		gameClient.GET("/newgame", func(c *gin.Context) {
+			c.File(INDEX_HTML)
+		})
+		gameClient.GET("/:uuid/nn", func(c *gin.Context) {
+			c.File(INDEX_HTML)
+		})
+		gameClient.GET("/:uuid/minimax", func(c *gin.Context) {
+			c.File(INDEX_HTML)
+		})
+	}
 
 	// API
 	{

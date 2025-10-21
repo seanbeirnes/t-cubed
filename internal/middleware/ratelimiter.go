@@ -10,10 +10,15 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const (
+	RATELIMIT_FREQ = time.Second
+	RATELIMIT_BURST = 10
+)
+
 func NewRateLimiter() gin.HandlerFunc {
 	var mu sync.Mutex
-	freq := rate.Every(time.Second)
-	burst := 5
+	freq := rate.Every(RATELIMIT_FREQ)
+	burst := RATELIMIT_BURST
 
 	// Map of ip addresses to rate limits
 	limiters := make(map[string]*rate.Limiter)
