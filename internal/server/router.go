@@ -10,6 +10,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	INDEX_HTML = "./static/index.html"
+)
+
 func newRouter(config *Config) *gin.Engine {
 	// Set up server and routes
 	gin.SetMode(config.GIN_MODE)
@@ -35,12 +39,31 @@ func applyRoutes(config *Config, engine *gin.Engine, handler *handler.Handler) {
 		middleware.NewGzip(),
 	)
 
-	// Index
-	engine.GET("/", func(c *gin.Context) {
+	// Static files for container deployment
+	if !config.DEV_MODE {
+		engine.Use(middleware.NewStatic())
+	}
+
+	// Health check
+	engine.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "index",
+			"status": "ok",
 		})
 	})
+
+	// Game client
+	{
+		gameClient := engine.Group("/game")
+		gameClient.GET("/newgame", func(c *gin.Context) {
+			c.File(INDEX_HTML)
+		})
+		gameClient.GET("/:uuid/nn", func(c *gin.Context) {
+			c.File(INDEX_HTML)
+		})
+		gameClient.GET("/:uuid/minimax", func(c *gin.Context) {
+			c.File(INDEX_HTML)
+		})
+	}
 
 	// API
 	{

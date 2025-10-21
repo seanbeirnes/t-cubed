@@ -7,6 +7,7 @@ require (
 	github.com/gin-contrib/gzip v1.2.4
 	github.com/gin-contrib/requestid v1.0.5
 	github.com/gin-contrib/secure v1.1.2
+	github.com/gin-contrib/static v1.1.5
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.6
