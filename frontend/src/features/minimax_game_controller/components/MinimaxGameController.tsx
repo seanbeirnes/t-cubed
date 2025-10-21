@@ -1,28 +1,15 @@
-import { createContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef } from "react";
 import useEventQueue from "../hooks/useEventQueue";
 
 import retry from "../../../shared/utils/retry";
-
-import { type Game } from "../../../shared/types";
-import { NN_GAME_STATES, EVENT_TYPES, type NNGameState, type HoveredNeuron, type NNHoverState, type Event } from "../types";
-import type { Layer } from "../../../features/nn_animation_panel";
-
-import { NNGameBoard } from "../../../features/nn_game_board";
-import { NNAnimationPanel } from "../../../features/nn_animation_panel";
-import { ErrorMessage } from "../../../shared/components";
-import { OVERRIDE_EXPANDED_STATE, type OverrideExpandedState } from "../../nn_animation_panel/types";
 import sleep from "../../../shared/utils/sleep";
+import { type Game } from "../../../shared/types";
+import { ErrorMessage } from "../../../shared/components";
+import { MinimaxGameBoard } from "../../../features/minimax_game_board";
 
-const initialHoverState: NNHoverState = {
-    hoveredCell: null,
-    setHoveredCell: null,
-    hoveredNeuron: null,
-    setHoveredNeuron: null,
-}
+import { MINIMAX_GAME_STATES, EVENT_TYPES, type MinimaxGameState, type Event } from "../types";
 
-const ANIMATION_STEP_DELAY = 500;
-
-export const NNHoverStateContext = createContext<NNHoverState>(initialHoverState);
+const ANIMATION_STEP_DELAY = 250;
 
 const hexToBitsMap: Record<string, number[]> = {
     "0": [0, 0, 0, 0],
@@ -62,37 +49,6 @@ function boardBitsFromHex(hex: string): number[] {
     return bits
 }
 
-function setInputLayerActivations(network: Layer[], bitBoard: number[]): void {
-    if (!bitBoard) {
-        console.warn("Invalid board state")
-        return
-    }
-
-    const inputLayerActivations = network[0]?.activations
-    if (!inputLayerActivations) {
-        console.warn("Input layer does not exist")
-        return
-    }
-    if (inputLayerActivations.length !== 18) {
-        console.warn("Input layer has an unexpected number of neurons")
-        return
-    }
-
-    // Set activations for player 1 ([7, 15]) and player 2 ([23, 31])
-    const p1StartIndex = 15
-    const p1EndIndex = 7
-    const p2StartIndex = 31
-    let bitBoardIndex = p1StartIndex
-    inputLayerActivations.forEach((_, i) => {
-        inputLayerActivations[i] = bitBoard[bitBoardIndex]
-        if (bitBoardIndex === p1EndIndex) {
-            bitBoardIndex = p2StartIndex
-        } else {
-            bitBoardIndex--
-        }
-    })
-}
-
 async function fetchGame(uuid: string): Promise<Game> {
     const res = await fetch(`/api/v1/game/${uuid}`)
     if (!res.ok) {
@@ -111,8 +67,8 @@ async function fetchGame(uuid: string): Promise<Game> {
     }
 }
 
-async function sendMove(uuid: string, position: number): Promise<{ game: Game, trace: number[], rankedMoves: number[] }> {
-    const res = await fetch(`/api/v1/game/${uuid}/nn`, {
+async function sendMove(uuid: string, position: number): Promise<Game> {
+    const res = await fetch(`/api/v1/game/${uuid}/mm`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json; charset=utf-8",
@@ -124,7 +80,6 @@ async function sendMove(uuid: string, position: number): Promise<{ game: Game, t
     }
     const data = await res.json()
     return {
-        game: {
             boardState: data.game.board_state,
             gameType: data.game.game_type,
             name: data.game.name,
@@ -133,46 +88,18 @@ async function sendMove(uuid: string, position: number): Promise<{ game: Game, t
             player2Piece: data.game.player_2_piece,
             terminalState: data.game.terminal_state,
             uuid: data.game.uuid,
-        },
-        trace: data.trace !== null ? data.trace.layerOutputs : null,
-        rankedMoves: data.ranked_moves,
     }
 }
 
-function getEmptyNetwork(): Layer[] {
-    const makeLayer = (size: number): Layer => ({
-        size,
-        activations: Array(size).fill(0),
-    })
-    return [makeLayer(18), makeLayer(32), makeLayer(32), makeLayer(32), makeLayer(9)]
-}
-
-function getOverrideExpandedState(gameState: NNGameState, network: Layer[]): OverrideExpandedState {
+function getGameStateMessage(gameState: MinimaxGameState, game: Game | null): string {
     switch (gameState) {
-        case NN_GAME_STATES.PLAYER_1_TURN:
-            // If no moves played, disabled expanding the panel
-            return !network[0]?.activations?.includes(1) ? OVERRIDE_EXPANDED_STATE.CLOSED : OVERRIDE_EXPANDED_STATE.NONE;
-        case NN_GAME_STATES.PLAYER_2_TURN:
-            // While the AI is thinking, disable expanding the panel
-            return OVERRIDE_EXPANDED_STATE.CLOSED
-        case NN_GAME_STATES.ANIMATING:
-            // While the AI is animating, keep the panel open
-            return OVERRIDE_EXPANDED_STATE.OPEN
-        case NN_GAME_STATES.GAME_OVER:
-            // If the game is over, disable expanding the panel
-            return OVERRIDE_EXPANDED_STATE.CLOSED
-        default:
-            return OVERRIDE_EXPANDED_STATE.NONE
-    }
-}
-
-function getGameStateMessage(gameState: NNGameState, game: Game | null): string {
-    switch (gameState) {
-        case NN_GAME_STATES.PLAYER_1_TURN:
+        case MINIMAX_GAME_STATES.PLAYER_1_TURN:
             return "Your turn, Human!"
-        case NN_GAME_STATES.PLAYER_2_TURN:
+        case MINIMAX_GAME_STATES.PLAYER_2_TURN:
             return "The AI is thinking... 🤖"
-        case NN_GAME_STATES.GAME_OVER:
+        case MINIMAX_GAME_STATES.ANIMATING:
+            return "The AI is thinking... 🤖"
+        case MINIMAX_GAME_STATES.GAME_OVER:
             switch (game?.terminalState) {
                 case 1:
                     return "Human wins!"
@@ -183,83 +110,42 @@ function getGameStateMessage(gameState: NNGameState, game: Game | null): string 
                 default:
                     return "Unknown"
             }
-        case NN_GAME_STATES.ANIMATING:
-            return "The AI is thinking... 🤖"
-        case NN_GAME_STATES.LOADING:
+        case MINIMAX_GAME_STATES.LOADING:
             return "Loading..."
-        case NN_GAME_STATES.ERROR:
+        case MINIMAX_GAME_STATES.ERROR:
             return "Error"
         default:
             return "Unknown"
     }
 }
 
-interface NNGameControllerProps {
+interface MinimaxGameControllerProps {
     uuid: string;
-    animationPanelWidth: number;
 }
 
 type AgregatedState = {
-    state: NNGameState;
+    state: MinimaxGameState;
     game: Game | null;
-    network: Layer[];
-    trace: number[][] | null;
-    rankedMoves: number[] | null;
-}
-
-function animateNetwork(step: number, boardState: string, network: Layer[], trace: number[][] | null): Layer[] {
-    if (!trace) return network;
-    switch (step) {
-        case 0:
-            network = getEmptyNetwork();
-            setInputLayerActivations(network, boardBitsFromHex(boardState));
-            return network;
-        case 1:
-            network[1].activations = trace[1];
-            return network;
-        case 2:
-            network[2].activations = trace[2];
-            return network;
-        case 3:
-            network[3].activations = trace[3];
-            return network;
-        case 4:
-            network[4].activations = trace[4];
-            return network;
-        default:
-            return network;
-    }
 }
 
 function reducer(state: AgregatedState, action: Event): AgregatedState {
     switch (action.type) {
         case EVENT_TYPES.ERROR:
             return {
-                state: NN_GAME_STATES.ERROR,
+                state: MINIMAX_GAME_STATES.ERROR,
                 game: null,
-                network: getEmptyNetwork(),
-                trace: null,
-                rankedMoves: null,
             }
         case EVENT_TYPES.LOAD_GAME:
-            const newNetwork = getEmptyNetwork();
-            setInputLayerActivations(newNetwork, boardBitsFromHex(action.payload.game.boardState));
             return {
-                state: action.payload.game.terminalState > 0 ? NN_GAME_STATES.GAME_OVER : NN_GAME_STATES.PLAYER_1_TURN,
+                state: action.payload.game.terminalState > 0 ? MINIMAX_GAME_STATES.GAME_OVER : MINIMAX_GAME_STATES.PLAYER_1_TURN,
                 game: action.payload.game,
-                network: newNetwork,
-                trace: null,
-                rankedMoves: null,
             }
         case EVENT_TYPES.HUMAN_MOVE:
             const newGameState = action.payload.game;
             action.payload.callback(newGameState);
             return {
-                state: NN_GAME_STATES.PLAYER_2_TURN,
+                state: MINIMAX_GAME_STATES.PLAYER_2_TURN,
                 game: state.game,
-                network: state.network,
-                trace: action.payload.trace,
-                rankedMoves: action.payload.rankedMoves,
             }
         case EVENT_TYPES.ANIMATION_STEP:
             const step = action.payload.step;
@@ -274,31 +160,25 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
             // Handle the game ending before AI's turn
             if (nextGameState?.terminalState === 1) {
                 return {
-                    state: NN_GAME_STATES.GAME_OVER,
+                    state: MINIMAX_GAME_STATES.GAME_OVER,
                     game: nextGameState,
-                    network: state.network,
-                    trace: state.trace,
-                    rankedMoves: state.rankedMoves,
                 }
             }
 
             // Append the next animation step to the queue
-            if (step < 4) action.payload.callback(nextGameState);
+            if (step < 1) action.payload.callback(nextGameState);
 
             // Handle the game ending after AI's turn
-            let nextState = NN_GAME_STATES.ANIMATING;
-            if (step > 3 && nextGameState?.terminalState === 0) {
-                nextState = NN_GAME_STATES.PLAYER_1_TURN;
+            let nextState = MINIMAX_GAME_STATES.ANIMATING;
+            if (step >= 1 && nextGameState?.terminalState === 0) {
+                nextState = MINIMAX_GAME_STATES.PLAYER_1_TURN;
             }
-            if (step > 3 && (nextGameState?.terminalState === 2 || nextGameState?.terminalState === 3)) {
-                nextState = NN_GAME_STATES.GAME_OVER;
+            if (step >= 1 && (nextGameState?.terminalState === 2 || nextGameState?.terminalState === 3)) {
+                nextState = MINIMAX_GAME_STATES.GAME_OVER;
             }
             return {
                 state: nextState,
-                game: step === 4 ? nextGameState : prevGameState,
-                network: animateNetwork(step, prevGameState?.boardState || "00000000", state.network, state.trace),
-                trace: state.trace,
-                rankedMoves: state.rankedMoves,
+                game: step === 1 ? nextGameState : prevGameState,
             }
         default:
             console.warn("Unknown event type");
@@ -306,11 +186,9 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
     }
 }
 
-export default function NNGameController({ uuid, animationPanelWidth }: NNGameControllerProps) {
+export default function NNGameController({ uuid }: MinimaxGameControllerProps) {
     const refLoading = useRef(false);
-    const [hoveredCell, setHoveredCell] = useState<number | null>(null);
-    const [hoveredNeuron, setHoveredNeuron] = useState<HoveredNeuron | null>(null);
-    const [state, dispatch] = useReducer(reducer, { state: NN_GAME_STATES.LOADING, game: null, network: getEmptyNetwork(), trace: null, rankedMoves: null });
+    const [state, dispatch] = useReducer(reducer, { state: MINIMAX_GAME_STATES.LOADING, game: null });
     const bitBoard = useMemo(() => boardBitsFromHex(state.game?.boardState || "00000000"), [state.game?.boardState]);
 
     const { enqueue, processNext, isProcessing } = useEventQueue(async (event: Event) => {
@@ -326,8 +204,8 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
                 break;
             case EVENT_TYPES.HUMAN_MOVE:
                 try {
-                    const { game, trace, rankedMoves } = await retry(async () => await sendMove(uuid, event.payload.position));
-                    dispatch({ type: EVENT_TYPES.HUMAN_MOVE, payload: { game: game, trace: trace, rankedMoves: rankedMoves, callback: event.payload.callback } });
+                    const game = await retry(async () => await sendMove(uuid, event.payload.position));
+                    dispatch({ type: EVENT_TYPES.HUMAN_MOVE, payload: { game: game, callback: event.payload.callback } });
                 } catch (error) {
                     dispatch({ type: EVENT_TYPES.ERROR, payload: { error: error } });
                     return;
@@ -356,7 +234,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
     });
 
     useEffect(() => {
-        if (state.state === NN_GAME_STATES.LOADING && !refLoading.current) {
+        if (state.state === MINIMAX_GAME_STATES.LOADING && !refLoading.current) {
             refLoading.current = true;
             enqueue({ type: EVENT_TYPES.LOAD_GAME, payload: {} });
         }
@@ -367,7 +245,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
         return () => clearInterval(interval)
     }, [isProcessing, state.state]);
 
-    if (state.state === NN_GAME_STATES.LOADING) {
+    if (state.state === MINIMAX_GAME_STATES.LOADING) {
         return (
             <div className="flex flex-col items-center justify-center w-100 h-124 bg-slate-500/60 rounded-xl shadow-2xl">
                 <p className="text-center text-amber-500 text-shadow-md text-shadow-amber-900 animate-ping">Loading...</p>
@@ -375,30 +253,24 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
         )
     }
 
-    if (state.state === NN_GAME_STATES.ERROR) {
+    if (state.state === MINIMAX_GAME_STATES.ERROR) {
         return <ErrorMessage />
     }
 
     return (
-        <NNHoverStateContext.Provider value={{
-            hoveredCell,
-            hoveredNeuron,
-            setHoveredCell,
-            setHoveredNeuron,
-        }} >
+        <>
             <p className={`w-82 md:w-102 px-4 py-2 mb-2 border-2 border-amber-500/80 rounded-full 
                 text-2xl text-center text-amber-500 bg-slate-500 text-shadow-md text-shadow-amber-900 
-                ${state.state === NN_GAME_STATES.PLAYER_2_TURN || state.state === NN_GAME_STATES.ANIMATING ? "animate-pulse" : ""}
+                ${state.state === MINIMAX_GAME_STATES.PLAYER_2_TURN || state.state === MINIMAX_GAME_STATES.ANIMATING ? "animate-pulse" : ""}
                 shadow-inner`}>
                 {getGameStateMessage(state.state, state.game)}
             </p>
-            <NNGameBoard
+            <MinimaxGameBoard
                 gameTitle={state.game?.name}
                 gameState={state.state}
                 boardState={bitBoard}
                 p1Piece={state.game?.player1Piece}
                 p2Piece={state.game?.player2Piece}
-                rankedMoves={state.rankedMoves}
                 playMove={(position: number) => {
                     enqueue({
                         type: EVENT_TYPES.HUMAN_MOVE, payload: {
@@ -408,7 +280,6 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
                     });
                 }}
             />
-            <NNAnimationPanel width={animationPanelWidth} network={state.network} overrideExpandedState={getOverrideExpandedState(state.state, state.network)} />
-        </NNHoverStateContext.Provider>
+        </>
     )
 }
