@@ -1,0 +1,110 @@
+import { type GameToken, GAME_TOKENS } from "../../../shared/types";
+
+import { ErrorMessage } from "../../../shared/components";
+
+import BoardHeader from "./BoardHeader";
+import BoardGrid from "./BoardGrid";
+import BoardFrame from "./BoardFrame";
+
+import { getWinningLine, validateBoardState, validateTokens } from "./utils";
+import { MINIMAX_GAME_STATES, type MinimaxGameState } from "../../minimax_game_controller/types";
+import { useState } from "react";
+
+// Converts a 32-bit array (16 bits P1, 16 bits P2) to GameToken[] of len 9
+// Least significant bit is first
+function boardStateFromBits(bits: number[], p1Piece: GameToken, p2Piece: GameToken): GameToken[] {
+    // Split into bitboards
+    const bitsP1: number[] = bits.slice(7, 16)
+    const bitsP2: number[] = bits.slice(23, 32)
+
+    // Convert 1s to tokens
+    const boardState: GameToken[] = [
+        GAME_TOKENS.EMPTY, GAME_TOKENS.EMPTY, GAME_TOKENS.EMPTY,
+        GAME_TOKENS.EMPTY, GAME_TOKENS.EMPTY, GAME_TOKENS.EMPTY,
+        GAME_TOKENS.EMPTY, GAME_TOKENS.EMPTY, GAME_TOKENS.EMPTY
+    ]
+
+    // Must go backwards for bitboards, but forward for boardState
+    let bitIndex = 8
+    boardState.forEach((_, i) => {
+        const p1Bit = bitsP1[bitIndex]
+        const p2Bit = bitsP2[bitIndex]
+        if (p1Bit === 1 && p2Bit === 1) {
+            throw new Error('Conflicting player pieces')
+        }
+        if (p1Bit === 1) {
+            boardState[i] = p1Piece
+        } else if (p2Bit === 1) {
+            boardState[i] = p2Piece
+        }
+        bitIndex--
+    })
+    return boardState
+}
+
+interface MinimaxGameBoardProps {
+    gameTitle: string | undefined;
+    gameState: MinimaxGameState | null;
+    boardState: number[] | null;
+    p1Piece: string | undefined; // Human
+    p2Piece: string | undefined; // AI
+    playMove: (position: number) => void;
+}
+
+export default function MinimaxGameBoard({ gameTitle, gameState, boardState, p1Piece, p2Piece, playMove }: MinimaxGameBoardProps) {
+    const [clicked, setClicked] = useState(false);
+    if (!boardState || !p1Piece || !p2Piece) {
+        boardState = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        p1Piece = "X"
+        p2Piece = "O"
+    }
+
+    const board = boardStateFromBits(boardState, p1Piece, p2Piece)
+
+    if (!validateBoardState(board) || !validateTokens(p1Piece, p2Piece)) {
+        return (
+            <div className="flex flex-col items-center justify-center w-100 h-124 bg-slate-600/60 rounded-xl shadow-2xl">
+                <ErrorMessage />
+            </div>
+        );
+    }
+
+    const winningLine = getWinningLine(board);
+
+    return (
+        <div
+            className="relative w-82 md:w-102 h-103 md:h-120 rounded-2xl shadow-xl overflow-hidden"
+            aria-label="Tic Tac Toe game board"
+            role="region"
+        >
+            {/* Apply an overlay to the board when the AI is thinking */}
+            {clicked || gameState === MINIMAX_GAME_STATES.ANIMATING || gameState === MINIMAX_GAME_STATES.PLAYER_2_TURN ?
+                <div className="absolute top-0 z-50 w-full h-full bg-gradient-to-br from-slate-800/50 via-slate-600/50 to-slate-900/50 animate-pulse" /> : null}
+            <div className="absolute -inset-10 bg-gradient-to-br from-slate-800 via-slate-600 to-slate-900" />
+
+            <div className="relative p-4">
+                <BoardHeader gameTitle={gameTitle} humanToken={p1Piece} aiToken={p2Piece} />
+
+                <BoardFrame ariaLabel="3 by 3 game board">
+                    <BoardGrid
+                        boardState={board}
+                        winningLine={winningLine}
+                        playMove={(position: number) => {
+                            // Don't allow user to click more than once or when the AI is thinking
+                            if (clicked || gameState === MINIMAX_GAME_STATES.ANIMATING || gameState === MINIMAX_GAME_STATES.PLAYER_2_TURN) {
+                                return;
+                            }
+                            // Don't allow user to click when the game is over
+                            if (gameState === MINIMAX_GAME_STATES.GAME_OVER) {
+                                return;
+                            }
+                            setClicked(true)
+                            playMove(position)
+                            setTimeout(() => setClicked(false), 1000)
+                        }}
+                        humanToken={p1Piece} />
+                </BoardFrame>
+            </div>
+        </div>
+    );
+}
