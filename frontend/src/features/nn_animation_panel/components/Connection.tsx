@@ -28,7 +28,7 @@ export default function Connection({ x1, y1, x2, y2, activation, maxActivation, 
             y1={`${y1}vw`}
             x2={`${x2}vw`}
             y2={`${y2}vw`}
-            stroke={getLineColor(activation)}
+            stroke={getLineColor(activation/maxActivation)}
             strokeOpacity={(activation/maxActivation) ** 4 + 0.1}
             strokeWidth={1}
             className={`${hidden ? "hidden" : ""}`}
