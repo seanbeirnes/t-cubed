@@ -233,6 +233,14 @@ function animateNetwork(step: number, boardState: string, network: Layer[], trac
 
 function reducer(state: AgregatedState, action: Event): AgregatedState {
     switch (action.type) {
+        case EVENT_TYPES.ERROR:
+            return {
+                state: NN_GAME_STATES.ERROR,
+                game: null,
+                network: getEmptyNetwork(),
+                trace: null,
+                rankedMoves: null,
+            }
         case EVENT_TYPES.LOAD_GAME:
             const newNetwork = getEmptyNetwork();
             setInputLayerActivations(newNetwork, boardBitsFromHex(action.payload.game.boardState));
@@ -308,12 +316,22 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
     const { enqueue, processNext, isProcessing } = useEventQueue(async (event: Event) => {
         switch (event.type) {
             case EVENT_TYPES.LOAD_GAME:
-                const currGame = await retry(async () => await fetchGame(uuid));
-                dispatch({ type: EVENT_TYPES.LOAD_GAME, payload: { game: currGame } });
+                try {
+                    const currGame = await retry(async () => await fetchGame(uuid));
+                    dispatch({ type: EVENT_TYPES.LOAD_GAME, payload: { game: currGame } });
+                } catch (error) {
+                    dispatch({ type: EVENT_TYPES.ERROR, payload: { error: error } });
+                    return;
+                }
                 break;
             case EVENT_TYPES.HUMAN_MOVE:
-                const { game, trace, rankedMoves } = await retry(async () => await sendMove(uuid, event.payload.position));
-                dispatch({ type: EVENT_TYPES.HUMAN_MOVE, payload: { game: game, trace: trace, rankedMoves: rankedMoves, callback: event.payload.callback } });
+                try {
+                    const { game, trace, rankedMoves } = await retry(async () => await sendMove(uuid, event.payload.position));
+                    dispatch({ type: EVENT_TYPES.HUMAN_MOVE, payload: { game: game, trace: trace, rankedMoves: rankedMoves, callback: event.payload.callback } });
+                } catch (error) {
+                    dispatch({ type: EVENT_TYPES.ERROR, payload: { error: error } });
+                    return;
+                }
                 break;
             case EVENT_TYPES.ANIMATION_STEP:
                 const step = event.payload.step;
