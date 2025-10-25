@@ -1,4 +1,5 @@
 interface ConnectionProps {
+    vw: number;
     x1: number;
     y1: number;
     x2: number;
@@ -20,14 +21,14 @@ function getLineColor(activation: number): string {
   return `rgb(${r},${g},${b})`;
 }
 
-export default function Connection({ x1, y1, x2, y2, activation, maxActivation, hidden=false }: ConnectionProps) {
+export default function Connection({ vw, x1, y1, x2, y2, activation, maxActivation, hidden=false }: ConnectionProps) {
     if (activation === 0) return null;
     return (
         <line
-            x1={`${x1}vw`}
-            y1={`${y1}vw`}
-            x2={`${x2}vw`}
-            y2={`${y2}vw`}
+            x1={x1 * vw}
+            y1={y1 * vw}
+            x2={x2 * vw}
+            y2={y2 * vw}
             stroke={getLineColor(activation/maxActivation)}
             strokeOpacity={(activation/maxActivation) ** 4 + 0.1}
             strokeWidth={1}

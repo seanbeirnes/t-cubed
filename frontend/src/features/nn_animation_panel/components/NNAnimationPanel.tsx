@@ -264,7 +264,7 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
                     />
                 </p>
             </div>
-            <svg aria-label="Neural network diagram" width={`${config.innerWidth}vw`} height={`${config.innerHeight}vw`}>
+            <svg aria-label="Neural network diagram" width={config.innerWidth * appState.window.vw} height={config.innerHeight * appState.window.vw}>
                 {/* Render the connections between neurons first so they are behind the neurons */}
                 {network.map((layer, i) => {
                     if (i === network.length - 1) return null; // last layer has no outgoing connections
@@ -287,6 +287,7 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
                             return (
                                 <Connection
                                     key={`connection-${i}-${j}-${k}`}
+                                    vw={appState.window.vw}
                                     x1={x1}
                                     y1={y1}
                                     x2={x2}
@@ -321,6 +322,7 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
                                         return (
                                             <Neuron
                                                 key={`neuron-${i}-${j}`}
+                                                vw={appState.window.vw}
                                                 x={getNeuronX(j, layer.size, config)}
                                                 y={getNeuronY(i, config)}
                                                 fill={getNeruonFill(layerType, j)}
