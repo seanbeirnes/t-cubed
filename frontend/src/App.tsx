@@ -26,6 +26,8 @@ function appStateReducer(state: AppState, action: AppStateAction): AppState {
                     ...state.window,
                     width: action.payload.width,
                     height: action.payload.height,
+                    vw: action.payload.vw,
+                    vh: action.payload.vh,
                 }
             }
         default:
@@ -37,6 +39,8 @@ const initialAppState: AppState = {
     window: {
         width: window.innerWidth,
         height: window.innerHeight,
+        vw: window.innerWidth/100,
+        vh: window.innerHeight/100,
     }
 }
 
@@ -53,6 +57,8 @@ export default function App() {
                 payload: {
                     width: window.innerWidth,
                     height: window.innerHeight,
+                    vw: window.innerWidth/100,
+                    vh: window.innerHeight/100,
                 }
             })
         });

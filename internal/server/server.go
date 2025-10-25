@@ -11,8 +11,8 @@ import (
 )
 
 
-func RunServer() {
-	config := newConfig()
+func RunServer(port int) {
+	config := newConfig(port)
 	defer config.Cleanup()
 
 	router := newRouter(config)

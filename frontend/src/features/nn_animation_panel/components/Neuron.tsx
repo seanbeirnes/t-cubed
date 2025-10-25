@@ -2,21 +2,26 @@ import type { NeuronFill } from "../types";
 
 import { motion } from "motion/react";
 
+// @ts-expect-error
+const isSafari = window.safari !== undefined;
+
+// Safari doesn't support scale animations with motion
 const nodeAnimationProps = {
     visible: (customDelay: number) => ({
-        scale: [0, 1],
+        scale: isSafari ? 1 : [0, 1],
         transition: {
             delay: customDelay,
         }
     }),
     hidden: {
-        scale: 0,
+        scale: isSafari ? 1 : 0,
         opacity: 1,
         fillOpacity: 1,
     }
 }
 
 interface NeuronProps {
+    vw: number;
     x: number;
     y: number;
     fill: NeuronFill;
@@ -59,7 +64,7 @@ function activationToText(activation: number): string {
     return activation.toFixed(2);
 }
 
-export default function Neuron({ x, y, fill, motionDelay, activation, maxActivation, showText = true, emphasized = false, onMouseEnter, onMouseLeave }: NeuronProps) {
+export default function Neuron({ vw, x, y, fill, motionDelay, activation, maxActivation, showText = true, emphasized = false, onMouseEnter, onMouseLeave }: NeuronProps) {
     return (
         <g
             aria-label={`Activation: ${activation.toFixed(2)}`}
@@ -67,9 +72,9 @@ export default function Neuron({ x, y, fill, motionDelay, activation, maxActivat
         >
             {/* Only show the neuron if the activation is greater than 0.01 to cull number of nodes to animate */}
             {activation > 0.01 && <motion.circle
-                cx={`${x}vw`}
-                cy={`${y}vw`}
-                r="1vw"
+                cx={x * vw}
+                cy={y * vw}
+                r={1 * vw}
                 className={`blur-xs transition-opacity ${emphasized ? "fill-amber-400" : "fill-white"}`}
                 custom={motionDelay}
                 initial="hidden"
@@ -79,11 +84,11 @@ export default function Neuron({ x, y, fill, motionDelay, activation, maxActivat
                 aria-hidden="true"
             /> }
             <motion.circle
-                cx={`${x}vw`}
-                cy={`${y}vw`}
-                r="0.9vw"
+                cx={x * vw}
+                cy={y * vw}
+                r={0.9 * vw}
                 fill={fill}
-                strokeWidth="0.1vw"
+                strokeWidth={0.1 * vw}
                 className={`${emphasized ? "stroke-amber-400" : "stroke-white"}`}
                 custom={motionDelay}
                 initial="hidden"
@@ -94,12 +99,12 @@ export default function Neuron({ x, y, fill, motionDelay, activation, maxActivat
             />
             {showText && (
                 <motion.text
-                    x={`${x}vw`}
-                    y={`${y}vw`}
+                    x={x * vw}
+                    y={y * vw}
                     textAnchor="middle"
                     dominantBaseline="central"
                     fill={getContrastColor(fill)}
-                    fontSize="0.78vw"
+                    fontSize={0.78 * vw}
                     custom={motionDelay}
                     initial="hidden"
                     whileInView="visible"
@@ -111,9 +116,9 @@ export default function Neuron({ x, y, fill, motionDelay, activation, maxActivat
                 </motion.text>
             )}
             <motion.circle
-                cx={`${x}vw`}
-                cy={`${y}vw`}
-                r="1vw"
+                cx={x * vw}
+                cy={y * vw}
+                r={1 * vw}
                 fill="transparent"
                 aria-hidden="true"
                 onMouseEnter={onMouseEnter}
