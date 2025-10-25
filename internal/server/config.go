@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,7 @@ type Config struct {
 
 // Loads environment variables and establishes a db connection
 // Use config.Cleanup() to close the db connection
-func newConfig() *Config {
+func newConfig(port int) *Config {
 	// Load environment variables
 	err := godotenv.Load()
 	if err != nil {
@@ -34,13 +35,9 @@ func newConfig() *Config {
 		slog.Info("DEV_MODE environment variable found.", "value", devMode)
 		DEV_MODE = true
 	}
-	PORT := os.Getenv("PORT")
-	if PORT == "" {
-		PORT = "8080"
-		slog.Warn("No PORT environment variable found.", "default", PORT)
-	} else {
-		slog.Info("Found PORT environment variable.", "value", PORT)
-	}
+	PORT := strconv.Itoa(port)
+	slog.Info("Found PORT environment variable.", "value", PORT)
+
 	tmpCorsOrigins := os.Getenv("CORS_ORIGINS")
 	if tmpCorsOrigins == "" {
 		slog.Warn("No CORS_ORIGINS environment variable found. Exiting...")

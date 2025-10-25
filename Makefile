@@ -4,7 +4,7 @@ setup:
 
 .PHONY: watch
 watch:
-	./script/watch.sh ./cmd/server/main.go
+	./script/watch.sh ./cmd/server/main.go --port 8080
 
 .PHONY: test
 test:

@@ -9,6 +9,7 @@ if [ -z "$1" ]; then
 fi
 
 MAIN_FILE="$1"
+OTHER_ARGS="${@:2}"
 DEBOUNCE=0.2
 
 # Check if entr is installed
@@ -26,5 +27,5 @@ find . -name '*.go' | entr -r sh -c "
     rm -rf tmp/bin
     mkdir -p tmp/bin
     go build -o ./tmp/bin/main $MAIN_FILE
-    ./tmp/bin/main
+    ./tmp/bin/main $OTHER_ARGS
 "
