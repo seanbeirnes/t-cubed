@@ -3,18 +3,18 @@ import type { NeuronFill } from "../types";
 import { motion } from "motion/react";
 
 // @ts-expect-error
-const isSafari = window.safari !== undefined;
+const isChrome = window.chrome !== undefined;
 
-// Safari doesn't support scale animations with motion
+// Non-chrome browsers do not support the scale animation
 const nodeAnimationProps = {
     visible: (customDelay: number) => ({
-        scale: isSafari ? 1 : [0, 1],
+        scale: isChrome ? [0, 1] : 1,
         transition: {
             delay: customDelay,
         }
     }),
     hidden: {
-        scale: isSafari ? 1 : 0,
+        scale: isChrome ? 0: 1,
         opacity: 1,
         fillOpacity: 1,
     }
