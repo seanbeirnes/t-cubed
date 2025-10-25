@@ -14,6 +14,8 @@ import { ErrorMessage } from "../../../shared/components";
 import { OVERRIDE_EXPANDED_STATE, type OverrideExpandedState } from "../../nn_animation_panel/types";
 import sleep from "../../../shared/utils/sleep";
 
+const ANIMATION_STEP_DELAY = 500;
+
 const initialHoverState: NNHoverState = {
     hoveredCell: null,
     setHoveredCell: null,
@@ -21,9 +23,20 @@ const initialHoverState: NNHoverState = {
     setHoveredNeuron: null,
 }
 
-const ANIMATION_STEP_DELAY = 500;
-
 export const NNHoverStateContext = createContext<NNHoverState>(initialHoverState);
+
+interface NNGameControllerProps {
+    uuid: string;
+    animationPanelWidth: number;
+}
+
+type AgregatedState = {
+    state: NNGameState;
+    game: Game | null;
+    network: Layer[];
+    trace: number[][] | null;
+    rankedMoves: number[] | null;
+}
 
 function setInputLayerActivations(network: Layer[], bitBoard: number[]): void {
     if (!bitBoard) {
@@ -110,11 +123,14 @@ function getEmptyNetwork(): Layer[] {
     return [makeLayer(18), makeLayer(32), makeLayer(32), makeLayer(32), makeLayer(9)]
 }
 
-function getOverrideExpandedState(gameState: NNGameState, network: Layer[]): OverrideExpandedState {
-    switch (gameState) {
+function getOverrideExpandedState(state: AgregatedState): OverrideExpandedState {
+    switch (state.state) {
         case NN_GAME_STATES.PLAYER_1_TURN:
-            // If no moves played, disabled expanding the panel
-            return !network[0]?.activations?.includes(1) ? OVERRIDE_EXPANDED_STATE.CLOSED : OVERRIDE_EXPANDED_STATE.NONE;
+            // Do not allow the panel to expand if there is no network trace
+            if (state.trace === null) {
+                return OVERRIDE_EXPANDED_STATE.CLOSED
+            }
+            return OVERRIDE_EXPANDED_STATE.NONE;
         case NN_GAME_STATES.PLAYER_2_TURN:
             // While the AI is thinking, disable expanding the panel
             return OVERRIDE_EXPANDED_STATE.CLOSED
@@ -122,52 +138,50 @@ function getOverrideExpandedState(gameState: NNGameState, network: Layer[]): Ove
             // While the AI is animating, keep the panel open
             return OVERRIDE_EXPANDED_STATE.OPEN
         case NN_GAME_STATES.GAME_OVER:
-            // If the game is over, disable expanding the panel
-            return OVERRIDE_EXPANDED_STATE.CLOSED
+            // Do not allow the panel to expand if there is no network trace
+            if (state.trace === null) {
+                return OVERRIDE_EXPANDED_STATE.CLOSED
+            }
+            return OVERRIDE_EXPANDED_STATE.NONE
         default:
             return OVERRIDE_EXPANDED_STATE.NONE
     }
 }
 
-function getGameStateMessage(gameState: NNGameState, game: Game | null): string {
+function getGameStateMessage(gameState: NNGameState, terminalState: number | undefined): string {
+    const MSG_HUMAN_TURN = "Your turn, Human!"
+    const MSG_AI_TURN = "The AI is thinking... 🤖"
+    const MSG_HUMAN_WINS = "Human wins!"
+    const MSG_AI_WINS = "AI wins!"
+    const MSG_DRAW = "Draw!"
+    const MSG_LOADING = "Loading..."
+    const MSG_ERROR = "Error"
+
     switch (gameState) {
         case NN_GAME_STATES.PLAYER_1_TURN:
-            return "Your turn, Human!"
+            return MSG_HUMAN_TURN
         case NN_GAME_STATES.PLAYER_2_TURN:
-            return "The AI is thinking... 🤖"
+            return MSG_AI_TURN
         case NN_GAME_STATES.GAME_OVER:
-            switch (game?.terminalState) {
+            switch (terminalState) {
                 case 1:
-                    return "Human wins!"
+                    return MSG_HUMAN_WINS
                 case 2:
-                    return "AI wins!"
+                    return MSG_AI_WINS
                 case 3:
-                    return "Draw!"
+                    return MSG_DRAW
                 default:
-                    return "Unknown"
+                    return MSG_ERROR
             }
         case NN_GAME_STATES.ANIMATING:
-            return "The AI is thinking... 🤖"
+            return MSG_AI_TURN
         case NN_GAME_STATES.LOADING:
-            return "Loading..."
+            return MSG_LOADING
         case NN_GAME_STATES.ERROR:
-            return "Error"
+            return MSG_ERROR
         default:
-            return "Unknown"
+            return MSG_ERROR
     }
-}
-
-interface NNGameControllerProps {
-    uuid: string;
-    animationPanelWidth: number;
-}
-
-type AgregatedState = {
-    state: NNGameState;
-    game: Game | null;
-    network: Layer[];
-    trace: number[][] | null;
-    rankedMoves: number[] | null;
 }
 
 function animateNetwork(step: number, boardState: string, network: Layer[], trace: number[][] | null): Layer[] {
@@ -204,9 +218,11 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
                 trace: null,
                 rankedMoves: null,
             }
+
         case EVENT_TYPES.LOAD_GAME:
             const newNetwork = getEmptyNetwork();
             setInputLayerActivations(newNetwork, boardBitsFromHex(action.payload.game.boardState));
+
             return {
                 state: action.payload.game.terminalState > 0 ? NN_GAME_STATES.GAME_OVER : NN_GAME_STATES.PLAYER_1_TURN,
                 game: action.payload.game,
@@ -214,26 +230,43 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
                 trace: null,
                 rankedMoves: null,
             }
+
         case EVENT_TYPES.HUMAN_MOVE:
-            const newGameState = action.payload.game;
-            action.payload.callback(newGameState);
+            // If the AI did not need to make a move (draw or Human won), end the game without animating
+            if (action.payload.trace === null && action.payload.rankedMoves === null) {
+                return {
+                    state: NN_GAME_STATES.GAME_OVER,
+                    game: action.payload.game,
+                    network: state.network,
+                    trace: null,
+                    rankedMoves: null,
+                }
+            }
+
+            // Call the callback to start animation steps, but don't update the board or ranked moves yet
+            action.payload.callback(action.payload.game, action.payload.rankedMoves);
+
             return {
                 state: NN_GAME_STATES.PLAYER_2_TURN,
                 game: state.game,
                 network: state.network,
                 trace: action.payload.trace,
-                rankedMoves: action.payload.rankedMoves,
+                rankedMoves: state.rankedMoves,
             }
+
         case EVENT_TYPES.ANIMATION_STEP:
             const step = action.payload.step;
             const prevGameState = state.game;
             const nextGameState = action.payload.newGameState;
+            const nextRankedMoves = action.payload.rankedMoves;
+
             // Keep AI move from showing in Player 1's board state
             if (step === 0 && prevGameState) {
                 const newHumanBoardState = nextGameState.boardState.slice(0, 4)
                 const prevComputerBoardState = prevGameState.boardState.slice(4, 8)
                 prevGameState.boardState = newHumanBoardState.concat(prevComputerBoardState)
             }
+
             // Handle the game ending before AI's turn
             if (nextGameState?.terminalState === 1) {
                 return {
@@ -241,12 +274,12 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
                     game: nextGameState,
                     network: state.network,
                     trace: state.trace,
-                    rankedMoves: state.rankedMoves,
+                    rankedMoves: nextRankedMoves,
                 }
             }
 
             // Append the next animation step to the queue
-            if (step < 4) action.payload.callback(nextGameState);
+            if (step < 4) action.payload.callback(nextGameState, nextRankedMoves);
 
             // Handle the game ending after AI's turn
             let nextState = NN_GAME_STATES.ANIMATING;
@@ -261,7 +294,7 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
                 game: step === 4 ? nextGameState : prevGameState,
                 network: animateNetwork(step, prevGameState?.boardState || "00000000", state.network, state.trace),
                 trace: state.trace,
-                rankedMoves: state.rankedMoves,
+                rankedMoves: step === 4 ? nextRankedMoves : state.rankedMoves,
             }
         default:
             console.warn("Unknown event type");
@@ -306,9 +339,10 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
                     {
                         step: event.payload.step,
                         newGameState: event.payload.newGameState,
-                        callback: (newGameState: Game) => enqueue({
+                        rankedMoves: event.payload.rankedMoves,
+                        callback: (newGameState: Game, rankedMoves: number[]) => enqueue({
                             type: EVENT_TYPES.ANIMATION_STEP,
-                            payload: { step: step + 1, newGameState: newGameState }
+                            payload: { step: step + 1, newGameState: newGameState, rankedMoves: rankedMoves }
                         })
                     }
                 });
@@ -318,6 +352,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
         }
     });
 
+    // useEffect runs the game loop by checking if the event queue needs processing
     useEffect(() => {
         if (state.state === NN_GAME_STATES.LOADING && !refLoading.current) {
             refLoading.current = true;
@@ -353,7 +388,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
                 text-2xl text-center text-amber-500 bg-slate-500 text-shadow-md text-shadow-amber-900 
                 ${state.state === NN_GAME_STATES.PLAYER_2_TURN || state.state === NN_GAME_STATES.ANIMATING ? "animate-pulse" : ""}
                 shadow-inner`}>
-                {getGameStateMessage(state.state, state.game)}
+                {getGameStateMessage(state.state, state.game?.terminalState)}
             </p>
             <NNGameBoard
                 gameTitle={state.game?.name}
@@ -366,12 +401,14 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
                     enqueue({
                         type: EVENT_TYPES.HUMAN_MOVE, payload: {
                             position: position,
-                            callback: (newGameState: Game) => enqueue({ type: EVENT_TYPES.ANIMATION_STEP, payload: { step: 0, newGameState: newGameState } })
+                            callback: (newGameState: Game, rankedMoves: number[]) => enqueue({ 
+                                type: EVENT_TYPES.ANIMATION_STEP,
+                                payload: { step: 0, newGameState: newGameState, rankedMoves: rankedMoves } })
                         }
                     });
                 }}
             />
-            <NNAnimationPanel width={animationPanelWidth} network={state.network} overrideExpandedState={getOverrideExpandedState(state.state, state.network)} />
+            <NNAnimationPanel width={animationPanelWidth} network={state.network} overrideExpandedState={getOverrideExpandedState(state)} />
         </NNHoverStateContext.Provider>
     )
 }
