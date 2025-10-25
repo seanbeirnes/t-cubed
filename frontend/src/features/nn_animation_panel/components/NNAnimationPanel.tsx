@@ -194,10 +194,10 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
         }
     }
 
-    if (overrideExpandedState === "open" && offset === offsetClosed) {
+    if (overrideExpandedState === OVERRIDE_EXPANDED_STATE.OPEN && offset === offsetClosed) {
         toggleExpanded();
     }
-    if (overrideExpandedState === "closed" && offset === offsetOpen) {
+    if (overrideExpandedState === OVERRIDE_EXPANDED_STATE.CLOSED && offset === offsetOpen) {
         toggleExpanded();
     }
 
@@ -231,7 +231,7 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
                     aria-controls="nn-animation-panel"
                     aria-label={expanded ? "Close neural network animation panel" : "Open neural network animation panel"}
                     title={expanded ? "Close neural network animation panel" : "Open neural network animation panel"}
-                    disabled={overrideExpandedState === "open" || overrideExpandedState === "closed"}
+                    disabled={overrideExpandedState === OVERRIDE_EXPANDED_STATE.OPEN || overrideExpandedState === OVERRIDE_EXPANDED_STATE.CLOSED}
                 >
                     {expanded ? <ChevronsDownUp className="w-full h-full" /> : <ChevronsUpDown className="w-full h-full" />}
                 </button>
@@ -300,14 +300,6 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
                         });
                     });
                 })}
-
-                {/*<TransitionMask
-                    key={`connections-mask-${offset}`}
-                    config={config}
-                    blocksPerRow={10}
-                    shortenDuration={!expanded} // Duration is shorter when closing panel
-                    hidden={expandedCount === 0}// Hide the mask when page is first loaded
-                />*/}
 
                 {/* Render the neurons for each layer */}
                 {
