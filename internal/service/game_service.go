@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"log/slog"
@@ -24,7 +25,9 @@ type GameService struct {
 	neuralNet          *ai.Network
 	cachedGameTypesMap map[string]int32 // Label -> ID
 }
+
 type Game = repository.Game
+type MoveEvent = repository.MoveEvent
 type GameType = repository.GameType
 type NNMoveTrace = ai.ForwardTrace
 
@@ -74,50 +77,70 @@ func (s *GameService) GetGameTypeLabel(gameTypeID int32) string {
 	return "unknown"
 }
 
-func (s *GameService) CreateGame(ctx context.Context, name string, gameTypeLabel string, player1Piece string, player2Piece string) (*Game, error) {
+func (s *GameService) CreateGame(ctx context.Context, name string, gameTypeLabel string, player1Piece string, player2Piece string) (*Game, *MoveEvent, error) {
 	if !isValidGamePice(player1Piece) {
-		return nil, errors.New("invalid player 1 piece")
+		return nil, nil, errors.New("invalid player 1 piece")
 	}
 	if !isValidGamePice(player2Piece) {
-		return nil, errors.New("invalid player 2 piece")
+		return nil, nil, errors.New("invalid player 2 piece")
 	}
 	if player1Piece == player2Piece {
-		return nil, errors.New("player 1 and player 2 cannot be the same piece")
+		return nil, nil, errors.New("player 1 and player 2 cannot be the same piece")
 	}
 	gameTypeID, ok := s.cachedGameTypesMap[gameTypeLabel]
 	if !ok {
-		return nil, errors.New("invalid game type")
+		return nil, nil, errors.New("invalid game type")
 	}
 
-	params := repository.CreateGameParams{
+	createGameParams := repository.CreateGameParams{
 		Name:         name,
 		GameTypeID:   gameTypeID,
-		NextPlayerID: 1,
 		AiPlayerID:   2,
 		Player1Piece: player1Piece,
 		Player2Piece: player2Piece,
 	}
 
-	game, err := s.repo.CreateGame(ctx, params)
+	game, err := s.repo.CreateGame(ctx, createGameParams)
 	if err != nil {
 		slog.Error("Could not create game", "error", err)
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &game, nil
+	// Create a blank move event to prepare the game for the first move
+	initialMoveEventparams := repository.CreateMoveEventParams{
+		GameUuid:      game.Uuid,
+		MoveSequence:  0,
+		PlayerID:      2, // Must be opposite of the first player's ID so that first player will be next
+		PostMoveState: bytes.Repeat([]byte{0}, 4),
+	}
+
+	move, err := s.repo.CreateMoveEvent(ctx, initialMoveEventparams)
+	if err != nil {
+		slog.Error("Could not create first move event", "error", err)
+		return nil, nil, err
+	}
+
+	return &game, &move, nil
 }
 
 func isValidGamePice(piece string) bool {
 	return piece == string(engine.PIECE_O) || piece == string(engine.PIECE_X)
 }
 
-func (s *GameService) GetGame(ctx context.Context, uuid uuid.UUID) (*Game, error) {
-	game, err := s.repo.GetGameByUUID(ctx, uuid)
+func (s *GameService) GetGame(ctx context.Context, uuid uuid.UUID) (*Game, *MoveEvent, error) {
+	gameData, err := s.repo.GetGameByUUID(ctx, uuid)
 	if err != nil {
 		slog.Error("Could not get game", "error", err)
-		return nil, err
+		return nil, nil, err
 	}
-	return &game, nil
+	game := &gameData.Game
+	moveEvent := &gameData.MoveEvent
+	 
+	if game != nil && moveEvent == nil {
+		return game, nil, nil
+	}
+
+	return game, moveEvent, nil
 }
 
 type NNMoveResult struct {
@@ -126,46 +149,57 @@ type NNMoveResult struct {
 	RankedMoves []int            `json:"ranked_moves"`
 }
 
+func getNextPlayerID(playerID int16) int16 {
+	if playerID == 1 {
+		return 2
+	}
+	return 1
+}
+
 // Plays a Neural Network move
-func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID int16, position uint8) (*NNMoveResult, error) {
-	game, err := s.repo.GetGameByUUID(ctx, uuid)
+func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID int16, position uint8) (*NNMoveResult, *MoveEvent, error) {
+	gameData, err := s.repo.GetGameByUUID(ctx, uuid)
 	if err != nil {
 		slog.Error("Could not get game from DB", "error", err)
-		return nil, err
+		return nil, nil, err
 	}
+	game := &gameData.Game
+	moveEvent := &gameData.MoveEvent
+	nextPlayerID := getNextPlayerID(moveEvent.PlayerID)
+	lastBoardState := moveEvent.PostMoveState
 
 	if !isValidPlayerID(playerID) {
-		return nil, errors.New("invalid player ID")
+		return nil, nil, errors.New("invalid player ID")
 	}
 	if !isValidPosition(position) {
-		return nil, errors.New("invalid position")
+		return nil, nil, errors.New("invalid position")
 	}
 
 	if game.TerminalState != engine.TERM_NOT {
-		return nil, errors.New("cannot play move on a finished game")
+		return nil, nil, errors.New("cannot play move on a finished game")
 	}
 	if game.GameTypeID != s.cachedGameTypesMap[GAME_TYPE_NN] {
-		return nil, errors.New("game type must be neural network")
+		return nil, nil, errors.New("game type must be neural network")
 	}
 	if playerID != 1 {
-		return nil, errors.New("human player ID must be 1")
+		return nil, nil, errors.New("human player ID must be 1")
 	}
-	if playerID != game.NextPlayerID {
-		return nil, errors.New("player ID does not match next player ID")
+	if playerID != nextPlayerID {
+		return nil, nil, errors.New("player ID does not match next player ID")
 	}
 
 	gameStateOptions := &engine.GameStateOptions{
 		Player1Piece:  pieceToByte(game.Player1Piece),
 		Player2Piece:  pieceToByte(game.Player2Piece),
-		FirstPlayerId: uint8(game.NextPlayerID),
+		FirstPlayerId: uint8(nextPlayerID),
 	}
 	gameState, err := engine.NewGameState(gameStateOptions)
 	if err != nil {
 		slog.Error("Could not create game state", "uuid", game.Uuid, "error", err)
-		return nil, err
+		return nil, nil, err
 	}
 	// Set the board state based on persisted data
-	p1Board, p2Board := engine.UnpackBoard(game.BoardState)
+	p1Board, p2Board := engine.UnpackBoard(lastBoardState)
 	gameState.Board.P1Board = p1Board
 	gameState.Board.P2Board = p2Board
 
@@ -173,35 +207,50 @@ func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID i
 	ok, err := gameState.Move(position)
 	if err != nil {
 		slog.Error("Could not play move", "uuid", game.Uuid, "error", err)
-		return nil, err
+		return nil, nil, err
 	}
 	if !ok {
 		slog.Warn("Could not play move", "uuid", game.Uuid, "position", position)
-		return nil, errors.New("invalid move")
+		return nil, nil, errors.New("invalid move")
 	}
 
 	updateGameParams := repository.UpdateGameParams{
 		Name:          game.Name,
-		NextPlayerID:  int16(gameState.GetCurrentPlayerId()),
-		BoardState:    gameState.GetBoardAsByteArray(),
 		TerminalState: int16(gameState.TerminalState),
 		Uuid:          game.Uuid,
 	}
-	game, err = s.repo.UpdateGame(ctx, updateGameParams)
+
+	*game, err = s.repo.UpdateGame(ctx, updateGameParams)
 	if err != nil {
 		slog.Warn("Failed to write updated game state to database", "uuid", uuid, "error", err)
-		return nil, err
+		return nil, nil, err
+	}
+
+	createMoveEventParams := repository.CreateMoveEventParams{
+		GameUuid:      game.Uuid,
+		MoveSequence:  moveEvent.MoveSequence + 1,
+		PlayerID:      nextPlayerID,
+		PostMoveState: gameState.GetBoardAsByteArray(),
+	}
+
+	*moveEvent, err = s.repo.CreateMoveEvent(ctx, createMoveEventParams)
+	if err != nil {
+		slog.Error("Could not create move event", "uuid", game.Uuid, "error", err)
+		return nil, nil, err
 	}
 
 	// If the game is over, return the game without a neural network trace
 	if gameState.IsTerminal() {
 		return &NNMoveResult{
-			Game:  &game,
+			Game:  game,
 			Trace: nil,
-		}, nil
+		}, 
+		moveEvent, 
+		nil
 	}
 
 	// Otherwise, play the AI (neural network) move and respond
+	nextPlayerID = getNextPlayerID(moveEvent.PlayerID)
 	input := gameState.GetBoardAsNetworkInput()
 	trace := new(ai.ForwardTrace)
 	output, err := s.neuralNet.Forward(input, trace)
@@ -230,69 +279,86 @@ func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID i
 		}
 	}
 	if !moveSuccess {
-		return nil, errors.New("no valid move for AI found")
+		return nil, nil, errors.New("no valid move for AI found")
 	}
 
 	updateGameParams = repository.UpdateGameParams{
 		Name:          game.Name,
-		NextPlayerID:  int16(gameState.GetCurrentPlayerId()),
-		BoardState:    gameState.GetBoardAsByteArray(),
 		TerminalState: int16(gameState.TerminalState),
 		Uuid:          game.Uuid,
 	}
-	game, err = s.repo.UpdateGame(ctx, updateGameParams)
+	*game, err = s.repo.UpdateGame(ctx, updateGameParams)
 	if err != nil {
 		slog.Warn("Failed to write updated game state to database", "uuid", uuid, "error", err)
-		return nil, err
+		return nil, nil, err
+	}
+
+	createMoveEventParams = repository.CreateMoveEventParams{
+		GameUuid:      game.Uuid,
+		MoveSequence:  moveEvent.MoveSequence + 1,
+		PlayerID:      nextPlayerID,
+		PostMoveState: gameState.GetBoardAsByteArray(),
+	}
+
+	*moveEvent, err = s.repo.CreateMoveEvent(ctx, createMoveEventParams)
+	if err != nil {
+		slog.Error("Could not create move event", "uuid", game.Uuid, "error", err)
+		return nil, nil, err
 	}
 
 	return &NNMoveResult{
-		Game:        &game,
+		Game:        game,
 		Trace:       trace,
 		RankedMoves: positions,
-	}, nil
+	},
+	moveEvent,
+	nil
 }
 
 // Plays Minimax move
-func (s *GameService) PlayMMMove(ctx context.Context, uuid uuid.UUID, playerID int16, position uint8) (*Game, error) {
-	game, err := s.repo.GetGameByUUID(ctx, uuid)
+func (s *GameService) PlayMMMove(ctx context.Context, uuid uuid.UUID, playerID int16, position uint8) (*Game, *MoveEvent, error) {
+	gameData, err := s.repo.GetGameByUUID(ctx, uuid)
 	if err != nil {
 		slog.Error("Could not get game from DB", "error", err)
-		return nil, err
+		return nil, nil, err
 	}
+	game := &gameData.Game
+	moveEvent := &gameData.MoveEvent
+	nextPlayerID := getNextPlayerID(moveEvent.PlayerID)
+	lastBoardState := moveEvent.PostMoveState
 
 	if !isValidPlayerID(playerID) {
-		return nil, errors.New("invalid player ID")
+		return nil, nil, errors.New("invalid player ID")
 	}
 	if !isValidPosition(position) {
-		return nil, errors.New("invalid position")
+		return nil, nil, errors.New("invalid position")
 	}
 
 	if game.TerminalState != engine.TERM_NOT {
-		return nil, errors.New("cannot play move on a finished game")
+		return nil, nil, errors.New("cannot play move on a finished game")
 	}
 	if game.GameTypeID != s.cachedGameTypesMap[GAME_TYPE_MINIMAX] {
-		return nil, errors.New("game type must be minimax")
+		return nil, nil, errors.New("game type must be minimax")
 	}
 	if playerID != 1 {
-		return nil, errors.New("human player ID must be 1")
+		return nil, nil, errors.New("human player ID must be 1")
 	}
-	if playerID != game.NextPlayerID {
-		return nil, errors.New("player ID does not match next player ID")
+	if playerID != nextPlayerID {
+		return nil, nil, errors.New("player ID does not match next player ID")
 	}
 
 	gameStateOptions := &engine.GameStateOptions{
 		Player1Piece:  pieceToByte(game.Player1Piece),
 		Player2Piece:  pieceToByte(game.Player2Piece),
-		FirstPlayerId: uint8(game.NextPlayerID),
+		FirstPlayerId: uint8(nextPlayerID),
 	}
 	gameState, err := engine.NewGameState(gameStateOptions)
 	if err != nil {
 		slog.Error("Could not create game state", "uuid", game.Uuid, "error", err)
-		return nil, err
+		return nil, nil, err
 	}
 	// Set the board state based on persisted data
-	p1Board, p2Board := engine.UnpackBoard(game.BoardState)
+	p1Board, p2Board := engine.UnpackBoard(lastBoardState)
 	gameState.Board.P1Board = p1Board
 	gameState.Board.P2Board = p2Board
 
@@ -300,57 +366,80 @@ func (s *GameService) PlayMMMove(ctx context.Context, uuid uuid.UUID, playerID i
 	ok, err := gameState.Move(position)
 	if err != nil {
 		slog.Error("Could not play move", "uuid", game.Uuid, "error", err)
-		return nil, err
+		return nil, nil, err
 	}
 	if !ok {
 		slog.Warn("Could not play move", "uuid", game.Uuid, "position", position)
-		return nil, errors.New("invalid move")
+		return nil, nil, errors.New("invalid move")
 	}
 
 	updateGameParams := repository.UpdateGameParams{
 		Name:          game.Name,
-		NextPlayerID:  int16(gameState.GetCurrentPlayerId()),
-		BoardState:    gameState.GetBoardAsByteArray(),
 		TerminalState: int16(gameState.TerminalState),
 		Uuid:          game.Uuid,
 	}
-	game, err = s.repo.UpdateGame(ctx, updateGameParams)
+	*game, err = s.repo.UpdateGame(ctx, updateGameParams)
 	if err != nil {
 		slog.Warn("Failed to write updated game state to database", "uuid", uuid, "error", err)
-		return nil, err
+		return nil, nil, err
+	}
+
+	createMoveEventParams := repository.CreateMoveEventParams{
+		GameUuid:      game.Uuid,
+		MoveSequence:  moveEvent.MoveSequence + 1,
+		PlayerID:      nextPlayerID,
+		PostMoveState: gameState.GetBoardAsByteArray(),
+	}
+
+	*moveEvent, err = s.repo.CreateMoveEvent(ctx, createMoveEventParams)
+	if err != nil {
+		slog.Error("Could not create move event", "uuid", game.Uuid, "error", err)
+		return nil, nil, err
 	}
 
 	// If the game is over, return the game without a neural network trace
 	if gameState.IsTerminal() {
-		return &game, nil
+		return game, moveEvent, nil
 	}
 
 	// Otherwise, play the AI (minimax) move and respond
+	nextPlayerID = getNextPlayerID(moveEvent.PlayerID)
 	bestMove := ai.BestMove(gameState.Board)
 	ok, err = gameState.Move(bestMove)
 	if err != nil {
 		slog.Error("Could not play move", "uuid", game.Uuid, "error", err)
-		return nil, err
+		return nil, nil, err
 	}
 	if !ok {
 		slog.Warn("Could not play move", "uuid", game.Uuid, "position", position)
-		return nil, errors.New("invalid move")
+		return nil, nil, errors.New("invalid move")
 	}
 
 	updateGameParams = repository.UpdateGameParams{
 		Name:          game.Name,
-		NextPlayerID:  int16(gameState.GetCurrentPlayerId()),
-		BoardState:    gameState.GetBoardAsByteArray(),
 		TerminalState: int16(gameState.TerminalState),
 		Uuid:          game.Uuid,
 	}
-	game, err = s.repo.UpdateGame(ctx, updateGameParams)
+	*game, err = s.repo.UpdateGame(ctx, updateGameParams)
 	if err != nil {
 		slog.Warn("Failed to write updated game state to database", "uuid", uuid, "error", err)
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &game, nil
+	createMoveEventParams = repository.CreateMoveEventParams{
+		GameUuid:      game.Uuid,
+		MoveSequence:  moveEvent.MoveSequence + 1,
+		PlayerID:      nextPlayerID,
+		PostMoveState: gameState.GetBoardAsByteArray(),
+	}
+
+	*moveEvent, err = s.repo.CreateMoveEvent(ctx, createMoveEventParams)
+	if err != nil {
+		slog.Error("Could not create move event", "uuid", game.Uuid, "error", err)
+		return nil, nil, err
+	}
+
+	return game, moveEvent, nil
 }
 
 // Utility function to convert a piece string to a byte

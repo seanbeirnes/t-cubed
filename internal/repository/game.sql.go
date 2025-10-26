@@ -12,25 +12,23 @@ import (
 )
 
 const createGame = `-- name: CreateGame :one
-INSERT INTO game (uuid, name, game_type_id, first_move_player_id, ai_player_id, player_1_piece, player_2_piece)
-VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, $6)
-RETURNING uuid, created_at, updated_at, name, game_type_id, player_1_piece, player_2_piece, first_move_player_id, ai_player_id, terminal_state
+INSERT INTO game (uuid, name, game_type_id, ai_player_id, player_1_piece, player_2_piece)
+VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5)
+RETURNING uuid, created_at, updated_at, name, game_type_id, player_1_piece, player_2_piece, ai_player_id, terminal_state
 `
 
 type CreateGameParams struct {
-	Name              string
-	GameTypeID        int32
-	FirstMovePlayerID int16
-	AiPlayerID        int16
-	Player1Piece      string
-	Player2Piece      string
+	Name         string
+	GameTypeID   int32
+	AiPlayerID   int16
+	Player1Piece string
+	Player2Piece string
 }
 
 func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) (Game, error) {
 	row := q.db.QueryRow(ctx, createGame,
 		arg.Name,
 		arg.GameTypeID,
-		arg.FirstMovePlayerID,
 		arg.AiPlayerID,
 		arg.Player1Piece,
 		arg.Player2Piece,
@@ -44,7 +42,6 @@ func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) (Game, e
 		&i.GameTypeID,
 		&i.Player1Piece,
 		&i.Player2Piece,
-		&i.FirstMovePlayerID,
 		&i.AiPlayerID,
 		&i.TerminalState,
 	)
@@ -62,24 +59,45 @@ func (q *Queries) DeleteGame(ctx context.Context, argUuid uuid.UUID) error {
 }
 
 const getGameByUUID = `-- name: GetGameByUUID :one
-SELECT uuid, created_at, updated_at, name, game_type_id, player_1_piece, player_2_piece, first_move_player_id, ai_player_id, terminal_state FROM game 
-WHERE uuid = $1
+SELECT g.uuid, g.created_at, g.updated_at, g.name, g.game_type_id, g.player_1_piece, g.player_2_piece, g.ai_player_id, g.terminal_state, me.uuid, me.game_uuid, me.trace_uuid, me.move_sequence, me.player_id, me.post_move_state, me.created_at, me.updated_at
+FROM game g
+LEFT JOIN move_event me
+  ON me.uuid = (
+      SELECT uuid
+      FROM move_event
+      WHERE game_uuid = g.uuid
+      ORDER BY move_sequence DESC
+      LIMIT 1
+  )
+WHERE g.uuid = $1
 `
 
-func (q *Queries) GetGameByUUID(ctx context.Context, argUuid uuid.UUID) (Game, error) {
+type GetGameByUUIDRow struct {
+	Game      Game
+	MoveEvent MoveEvent
+}
+
+func (q *Queries) GetGameByUUID(ctx context.Context, argUuid uuid.UUID) (GetGameByUUIDRow, error) {
 	row := q.db.QueryRow(ctx, getGameByUUID, argUuid)
-	var i Game
+	var i GetGameByUUIDRow
 	err := row.Scan(
-		&i.Uuid,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Name,
-		&i.GameTypeID,
-		&i.Player1Piece,
-		&i.Player2Piece,
-		&i.FirstMovePlayerID,
-		&i.AiPlayerID,
-		&i.TerminalState,
+		&i.Game.Uuid,
+		&i.Game.CreatedAt,
+		&i.Game.UpdatedAt,
+		&i.Game.Name,
+		&i.Game.GameTypeID,
+		&i.Game.Player1Piece,
+		&i.Game.Player2Piece,
+		&i.Game.AiPlayerID,
+		&i.Game.TerminalState,
+		&i.MoveEvent.Uuid,
+		&i.MoveEvent.GameUuid,
+		&i.MoveEvent.TraceUuid,
+		&i.MoveEvent.MoveSequence,
+		&i.MoveEvent.PlayerID,
+		&i.MoveEvent.PostMoveState,
+		&i.MoveEvent.CreatedAt,
+		&i.MoveEvent.UpdatedAt,
 	)
 	return i, err
 }
@@ -88,7 +106,7 @@ const updateGame = `-- name: UpdateGame :one
 UPDATE game
 SET name = $1, terminal_state = $2
 WHERE uuid = $3
-RETURNING uuid, created_at, updated_at, name, game_type_id, player_1_piece, player_2_piece, first_move_player_id, ai_player_id, terminal_state
+RETURNING uuid, created_at, updated_at, name, game_type_id, player_1_piece, player_2_piece, ai_player_id, terminal_state
 `
 
 type UpdateGameParams struct {
@@ -108,7 +126,6 @@ func (q *Queries) UpdateGame(ctx context.Context, arg UpdateGameParams) (Game, e
 		&i.GameTypeID,
 		&i.Player1Piece,
 		&i.Player2Piece,
-		&i.FirstMovePlayerID,
 		&i.AiPlayerID,
 		&i.TerminalState,
 	)

@@ -18,7 +18,6 @@ CREATE TABLE game (
     game_type_id INT NOT NULL REFERENCES game_type(id),
     player_1_piece CHAR(1) NOT NULL,
     player_2_piece CHAR(1) NOT NULL,
-    first_move_player_id SMALLINT NOT NULL,
     ai_player_id SMALLINT NOT NULL DEFAULT 0,
     terminal_state SMALLINT NOT NULL DEFAULT 0
 );

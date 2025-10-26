@@ -21,6 +21,13 @@ type ResGame struct {
 	TerminalState int16  `json:"terminal_state"`
 }
 
+func getNextPlayerID(moveEvent *service.MoveEvent) int16 {
+	if moveEvent.PlayerID == 1 {
+		return 2
+	}
+	return 1
+}
+
 func (h *Handler) GetGame(c *gin.Context) {
 	uuidParam := c.Param("uuid")
 	uuid, err := uuid.Parse(uuidParam)
@@ -29,7 +36,7 @@ func (h *Handler) GetGame(c *gin.Context) {
 		return
 	}
 
-	game, err := h.gameService.GetGame(c.Request.Context(), uuid)
+	game, moveEvent, err := h.gameService.GetGame(c.Request.Context(), uuid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -41,8 +48,8 @@ func (h *Handler) GetGame(c *gin.Context) {
 		UUID:          game.Uuid.String(),
 		Name:          game.Name,
 		GameType:      h.gameService.GetGameTypeLabel(game.GameTypeID),
-		BoardState:    hex.EncodeToString(game.BoardState),
-		NextPlayerID:  game.NextPlayerID,
+		BoardState:    hex.EncodeToString(moveEvent.PostMoveState),
+		NextPlayerID:  getNextPlayerID(moveEvent),
 		Player1Piece:  game.Player1Piece,
 		Player2Piece:  game.Player2Piece,
 		TerminalState: game.TerminalState,
@@ -68,7 +75,7 @@ func (h *Handler) CreateGame(c *gin.Context) {
 		return
 	}
 
-	game, err := h.gameService.CreateGame(c.Request.Context(), req.Name, req.GameType, req.Player1Piece, req.Player2Piece)
+	game, moveEvent, err := h.gameService.CreateGame(c.Request.Context(), req.Name, req.GameType, req.Player1Piece, req.Player2Piece)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -80,8 +87,8 @@ func (h *Handler) CreateGame(c *gin.Context) {
 		UUID:          game.Uuid.String(),
 		Name:          game.Name,
 		GameType:      h.gameService.GetGameTypeLabel(game.GameTypeID),
-		BoardState:    hex.EncodeToString(game.BoardState),
-		NextPlayerID:  game.NextPlayerID,
+		BoardState:    hex.EncodeToString(moveEvent.PostMoveState),
+		NextPlayerID:  getNextPlayerID(moveEvent),
 		Player1Piece:  game.Player1Piece,
 		Player2Piece:  game.Player2Piece,
 		TerminalState: game.TerminalState,
@@ -132,7 +139,7 @@ func (h *Handler) PlayNNMove(c *gin.Context) {
 	}
 	position := uint8(parsedPosition)
 
-	result, err := h.gameService.PlayNNMove(c.Request.Context(), uuid, playerID, position)
+	result, moveEvent, err := h.gameService.PlayNNMove(c.Request.Context(), uuid, playerID, position)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -145,8 +152,8 @@ func (h *Handler) PlayNNMove(c *gin.Context) {
 			UUID:          result.Game.Uuid.String(),
 			Name:          result.Game.Name,
 			GameType:      h.gameService.GetGameTypeLabel(result.Game.GameTypeID),
-			BoardState:    hex.EncodeToString(result.Game.BoardState),
-			NextPlayerID:  result.Game.NextPlayerID,
+			BoardState:    hex.EncodeToString(moveEvent.PostMoveState),
+			NextPlayerID:  getNextPlayerID(moveEvent),
 			Player1Piece:  result.Game.Player1Piece,
 			Player2Piece:  result.Game.Player2Piece,
 			TerminalState: result.Game.TerminalState,
@@ -204,7 +211,7 @@ func (h *Handler) PlayMMMove(c *gin.Context) {
 	}
 	position := uint8(parsedPosition)
 
-	result, err := h.gameService.PlayMMMove(c.Request.Context(), uuid, playerID, position)
+	result, moveEvent, err := h.gameService.PlayMMMove(c.Request.Context(), uuid, playerID, position)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -217,8 +224,8 @@ func (h *Handler) PlayMMMove(c *gin.Context) {
 			UUID:          result.Uuid.String(),
 			Name:          result.Name,
 			GameType:      h.gameService.GetGameTypeLabel(result.GameTypeID),
-			BoardState:    hex.EncodeToString(result.BoardState),
-			NextPlayerID:  result.NextPlayerID,
+			BoardState:    hex.EncodeToString(moveEvent.PostMoveState),
+			NextPlayerID:  getNextPlayerID(moveEvent),
 			Player1Piece:  result.Player1Piece,
 			Player2Piece:  result.Player2Piece,
 			TerminalState: result.TerminalState,

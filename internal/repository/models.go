@@ -12,16 +12,15 @@ import (
 )
 
 type Game struct {
-	Uuid              uuid.UUID
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	Name              string
-	GameTypeID        int32
-	Player1Piece      string
-	Player2Piece      string
-	FirstMovePlayerID int16
-	AiPlayerID        int16
-	TerminalState     int16
+	Uuid          uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	Name          string
+	GameTypeID    int32
+	Player1Piece  string
+	Player2Piece  string
+	AiPlayerID    int16
+	TerminalState int16
 }
 
 type GameType struct {
