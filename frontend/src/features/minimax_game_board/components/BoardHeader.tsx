@@ -25,7 +25,7 @@ export function BoardHeader({ gameTitle,  humanToken, aiToken }: BoardHeaderProp
 
   return (
     <div className="flex items-center justify-between mb-2">
-      <h2 className="text-amber-400 font-semibold tracking-wide text-sm md:text-base drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]">
+      <h2 className="text-amber-400 font-semibold tracking-wide text-xs sm:text-sm md:text-base drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]">
         {gameTitle}
       </h2>
       <div className="text-xs md:text-sm text-slate-300/80">
