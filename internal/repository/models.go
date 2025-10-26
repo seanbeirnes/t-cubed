@@ -8,20 +8,20 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Game struct {
-	Uuid          uuid.UUID
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	Name          string
-	GameTypeID    int32
-	BoardState    []byte
-	NextPlayerID  int16
-	Player1Piece  string
-	Player2Piece  string
-	AiPlayerID    int16
-	TerminalState int16
+	Uuid              uuid.UUID
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	Name              string
+	GameTypeID        int32
+	Player1Piece      string
+	Player2Piece      string
+	FirstMovePlayerID int16
+	AiPlayerID        int16
+	TerminalState     int16
 }
 
 type GameType struct {
@@ -29,4 +29,23 @@ type GameType struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Label     string
+}
+
+type MoveEvent struct {
+	Uuid          uuid.UUID
+	GameUuid      uuid.UUID
+	TraceUuid     pgtype.UUID
+	MoveSequence  int16
+	PlayerID      int16
+	PostMoveState []byte
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+type TraceCache struct {
+	Uuid                 uuid.UUID
+	PrePostMoveStateHash []byte
+	Trace                []byte
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }

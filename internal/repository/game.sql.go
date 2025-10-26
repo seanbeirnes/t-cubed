@@ -12,25 +12,25 @@ import (
 )
 
 const createGame = `-- name: CreateGame :one
-INSERT INTO game (uuid, name, game_type_id, next_player_id, ai_player_id, player_1_piece, player_2_piece)
+INSERT INTO game (uuid, name, game_type_id, first_move_player_id, ai_player_id, player_1_piece, player_2_piece)
 VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, $6)
-RETURNING uuid, created_at, updated_at, name, game_type_id, board_state, next_player_id, player_1_piece, player_2_piece, ai_player_id, terminal_state
+RETURNING uuid, created_at, updated_at, name, game_type_id, player_1_piece, player_2_piece, first_move_player_id, ai_player_id, terminal_state
 `
 
 type CreateGameParams struct {
-	Name         string
-	GameTypeID   int32
-	NextPlayerID int16
-	AiPlayerID   int16
-	Player1Piece string
-	Player2Piece string
+	Name              string
+	GameTypeID        int32
+	FirstMovePlayerID int16
+	AiPlayerID        int16
+	Player1Piece      string
+	Player2Piece      string
 }
 
 func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) (Game, error) {
 	row := q.db.QueryRow(ctx, createGame,
 		arg.Name,
 		arg.GameTypeID,
-		arg.NextPlayerID,
+		arg.FirstMovePlayerID,
 		arg.AiPlayerID,
 		arg.Player1Piece,
 		arg.Player2Piece,
@@ -42,10 +42,9 @@ func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) (Game, e
 		&i.UpdatedAt,
 		&i.Name,
 		&i.GameTypeID,
-		&i.BoardState,
-		&i.NextPlayerID,
 		&i.Player1Piece,
 		&i.Player2Piece,
+		&i.FirstMovePlayerID,
 		&i.AiPlayerID,
 		&i.TerminalState,
 	)
@@ -63,7 +62,7 @@ func (q *Queries) DeleteGame(ctx context.Context, argUuid uuid.UUID) error {
 }
 
 const getGameByUUID = `-- name: GetGameByUUID :one
-SELECT uuid, created_at, updated_at, name, game_type_id, board_state, next_player_id, player_1_piece, player_2_piece, ai_player_id, terminal_state FROM game 
+SELECT uuid, created_at, updated_at, name, game_type_id, player_1_piece, player_2_piece, first_move_player_id, ai_player_id, terminal_state FROM game 
 WHERE uuid = $1
 `
 
@@ -76,10 +75,9 @@ func (q *Queries) GetGameByUUID(ctx context.Context, argUuid uuid.UUID) (Game, e
 		&i.UpdatedAt,
 		&i.Name,
 		&i.GameTypeID,
-		&i.BoardState,
-		&i.NextPlayerID,
 		&i.Player1Piece,
 		&i.Player2Piece,
+		&i.FirstMovePlayerID,
 		&i.AiPlayerID,
 		&i.TerminalState,
 	)
@@ -88,27 +86,19 @@ func (q *Queries) GetGameByUUID(ctx context.Context, argUuid uuid.UUID) (Game, e
 
 const updateGame = `-- name: UpdateGame :one
 UPDATE game
-SET name = $1, next_player_id = $2, board_state = $3, terminal_state = $4
-WHERE uuid = $5
-RETURNING uuid, created_at, updated_at, name, game_type_id, board_state, next_player_id, player_1_piece, player_2_piece, ai_player_id, terminal_state
+SET name = $1, terminal_state = $2
+WHERE uuid = $3
+RETURNING uuid, created_at, updated_at, name, game_type_id, player_1_piece, player_2_piece, first_move_player_id, ai_player_id, terminal_state
 `
 
 type UpdateGameParams struct {
 	Name          string
-	NextPlayerID  int16
-	BoardState    []byte
 	TerminalState int16
 	Uuid          uuid.UUID
 }
 
 func (q *Queries) UpdateGame(ctx context.Context, arg UpdateGameParams) (Game, error) {
-	row := q.db.QueryRow(ctx, updateGame,
-		arg.Name,
-		arg.NextPlayerID,
-		arg.BoardState,
-		arg.TerminalState,
-		arg.Uuid,
-	)
+	row := q.db.QueryRow(ctx, updateGame, arg.Name, arg.TerminalState, arg.Uuid)
 	var i Game
 	err := row.Scan(
 		&i.Uuid,
@@ -116,10 +106,9 @@ func (q *Queries) UpdateGame(ctx context.Context, arg UpdateGameParams) (Game, e
 		&i.UpdatedAt,
 		&i.Name,
 		&i.GameTypeID,
-		&i.BoardState,
-		&i.NextPlayerID,
 		&i.Player1Piece,
 		&i.Player2Piece,
+		&i.FirstMovePlayerID,
 		&i.AiPlayerID,
 		&i.TerminalState,
 	)
