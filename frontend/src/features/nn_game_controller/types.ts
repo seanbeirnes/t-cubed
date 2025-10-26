@@ -27,6 +27,7 @@ export const EVENT_TYPES = {
     HUMAN_MOVE: "HUMAN_MOVE",
     ANIMATION_STEP: "ANIMATION_STEP",
     TERMINAL_STATE: "TERMINAL_STATE",
+    SET_MOVE_HISTORY: "SET_MOVE_HISTORY",
 }
 
 export type EventType = typeof EVENT_TYPES[keyof typeof EVENT_TYPES];
