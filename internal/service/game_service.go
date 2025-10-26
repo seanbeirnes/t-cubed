@@ -27,7 +27,7 @@ const (
 type GameService struct {
 	repo                 *repository.Queries
 	neuralNet            *ai.Network
-	cachedGameTypesMap   map[string]int32      // Label -> ID
+	cachedGameTypesMap   map[string]int32     // Label -> ID
 	cachedTraceHachesMap map[string]uuid.UUID // Hash of pre+post game state  -> UUID
 }
 
@@ -57,9 +57,9 @@ func NewGameService(db *pgxpool.Pool) *GameService {
 	slog.Info("Loaded neural network", "weights_file", neuralNetWeightsFile)
 
 	return &GameService{
-		repo:               repo,
-		neuralNet:          neuralNet,
-		cachedGameTypesMap: cachedGameTypesMap,
+		repo:                 repo,
+		neuralNet:            neuralNet,
+		cachedGameTypesMap:   cachedGameTypesMap,
 		cachedTraceHachesMap: nil,
 	}
 }
@@ -370,15 +370,20 @@ func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID i
 		return nil, nil, err
 	}
 
+	// PostMoveState is the last move (pre-move) and gameState is the post-move state
+	traceUuid, err := s.AddTrace(ctx, moveEvent.PostMoveState, gameState.GetBoardAsByteArray(), trace)
+	if err != nil {
+		slog.Error("Could not add trace to database", "uuid", game.Uuid, "error", err)
+		return nil, nil, err
+	}
+
 	createMoveEventParams = repository.CreateMoveEventParams{
 		GameUuid:      game.Uuid,
+		TraceUuid:     traceUuid,
 		MoveSequence:  moveEvent.MoveSequence + 1,
 		PlayerID:      nextPlayerID,
 		PostMoveState: gameState.GetBoardAsByteArray(),
 	}
-
-	// PostMoveState is the last move (pre-move) and gameState is the post-move state
-	s.AddTrace(ctx, moveEvent.PostMoveState, gameState.GetBoardAsByteArray(), trace)
 
 	*moveEvent, err = s.repo.CreateMoveEvent(ctx, createMoveEventParams)
 	if err != nil {

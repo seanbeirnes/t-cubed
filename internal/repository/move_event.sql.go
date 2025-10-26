@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createMoveEvent = `-- name: CreateMoveEvent :one
@@ -21,7 +20,7 @@ RETURNING uuid, game_uuid, trace_uuid, move_sequence, player_id, post_move_state
 
 type CreateMoveEventParams struct {
 	GameUuid      uuid.UUID
-	TraceUuid     pgtype.UUID
+	TraceUuid     *uuid.UUID
 	MoveSequence  int16
 	PlayerID      int16
 	PostMoveState []byte
@@ -93,7 +92,7 @@ ORDER BY move_event.move_sequence
 type ListGameMoveEventsWithTraceRow struct {
 	Uuid                 uuid.UUID
 	GameUuid             uuid.UUID
-	TraceUuid            pgtype.UUID
+	TraceUuid            *uuid.UUID
 	MoveSequence         int16
 	PlayerID             int16
 	PostMoveState        []byte

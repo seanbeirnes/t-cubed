@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Game struct {
@@ -33,7 +32,7 @@ type GameType struct {
 type MoveEvent struct {
 	Uuid          uuid.UUID
 	GameUuid      uuid.UUID
-	TraceUuid     pgtype.UUID
+	TraceUuid     *uuid.UUID
 	MoveSequence  int16
 	PlayerID      int16
 	PostMoveState []byte
