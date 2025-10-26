@@ -36,6 +36,11 @@ type MoveEvent = repository.MoveEvent
 type GameType = repository.GameType
 type NNMoveTrace = ai.ForwardTrace
 
+type MoveEventWithTrace struct {
+	MoveEvent *MoveEvent
+	Trace     *NNMoveTrace
+}
+
 func NewGameService(db *pgxpool.Pool) *GameService {
 	neuralNetWeightsFile := "data/weights.json"
 	repo := repository.New(db)
@@ -525,6 +530,56 @@ func (s *GameService) PlayMMMove(ctx context.Context, uuid uuid.UUID, playerID i
 	}
 
 	return game, moveEvent, nil
+}
+
+func (s *GameService) GetMoveHistory(ctx context.Context, uuid uuid.UUID) ([]MoveEventWithTrace, error) {
+	moveEventRows, err := s.repo.ListGameMoveEventsWithTrace(ctx, uuid)
+	if err != nil {
+		slog.Error("Could not get game from DB", "error", err)
+		return nil, err
+	}
+	var moveEvents []MoveEventWithTrace
+	for _, moveEventRow := range moveEventRows {
+		moveEvent := &MoveEvent{
+			Uuid:          moveEventRow.Uuid,
+			GameUuid:      moveEventRow.GameUuid,
+			TraceUuid:     moveEventRow.TraceUuid,
+			MoveSequence:  moveEventRow.MoveSequence,
+			PlayerID:      moveEventRow.PlayerID,
+			PostMoveState: moveEventRow.PostMoveState,
+			CreatedAt:     moveEventRow.CreatedAt,
+			UpdatedAt:     moveEventRow.UpdatedAt,
+		}
+		if moveEventRow.TraceUuid == nil {
+			moveEvents = append(moveEvents, MoveEventWithTrace{
+				MoveEvent: moveEvent,
+				Trace:     nil,
+			})
+			continue
+		}
+
+		// If there is a trace UUID, transform the protobuf into the trace struct
+		var traceMessage pb.Trace
+		err := proto.Unmarshal(moveEventRow.Trace, &traceMessage)
+		if err != nil {
+			slog.Error("Could not unmarshal trace message", "error", err)
+			return nil, err
+		}
+		trace := &NNMoveTrace{
+			LayerOutputs: [][]float64{
+				traceMessage.GetLayer1(),
+				traceMessage.GetLayer2(),
+				traceMessage.GetLayer3(),
+				traceMessage.GetLayer4(),
+				traceMessage.GetLayer5(),
+			},
+		}
+		moveEvents = append(moveEvents, MoveEventWithTrace{
+			MoveEvent: moveEvent,
+			Trace:     trace,
+		})
+	}
+	return moveEvents, nil
 }
 
 // Utility function to convert a piece string to a byte

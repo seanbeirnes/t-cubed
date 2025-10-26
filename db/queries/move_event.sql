@@ -9,6 +9,6 @@ WHERE game_uuid = $1;
 
 -- name: ListGameMoveEventsWithTrace :many
 SELECT * FROM move_event
-JOIN trace_cache ON trace_cache.uuid = move_event.trace_uuid
+LEFT JOIN trace_cache ON trace_cache.uuid = move_event.trace_uuid
 WHERE move_event.game_uuid = $1
 ORDER BY move_event.move_sequence;

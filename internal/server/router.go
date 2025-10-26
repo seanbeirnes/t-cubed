@@ -72,5 +72,6 @@ func applyRoutes(config *Config, engine *gin.Engine, handler *handler.Handler) {
 		apiV1.GET("/game/:uuid", handler.GetGame)
 		apiV1.POST("/game/:uuid/nn", handler.PlayNNMove)
 		apiV1.POST("/game/:uuid/mm", handler.PlayMMMove)
+		apiV1.GET("/game/:uuid/history", handler.GetMoveHistory)
 	}
 }

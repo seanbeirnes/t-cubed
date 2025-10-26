@@ -84,7 +84,7 @@ func (q *Queries) ListGameMoveEvents(ctx context.Context, gameUuid uuid.UUID) ([
 
 const listGameMoveEventsWithTrace = `-- name: ListGameMoveEventsWithTrace :many
 SELECT move_event.uuid, game_uuid, trace_uuid, move_sequence, player_id, post_move_state, move_event.created_at, move_event.updated_at, trace_cache.uuid, pre_post_move_state_hash, trace, trace_cache.created_at, trace_cache.updated_at FROM move_event
-JOIN trace_cache ON trace_cache.uuid = move_event.trace_uuid
+LEFT JOIN trace_cache ON trace_cache.uuid = move_event.trace_uuid
 WHERE move_event.game_uuid = $1
 ORDER BY move_event.move_sequence
 `
@@ -98,11 +98,11 @@ type ListGameMoveEventsWithTraceRow struct {
 	PostMoveState        []byte
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
-	Uuid_2               uuid.UUID
+	Uuid_2               *uuid.UUID
 	PrePostMoveStateHash []byte
 	Trace                []byte
-	CreatedAt_2          time.Time
-	UpdatedAt_2          time.Time
+	CreatedAt_2          *time.Time
+	UpdatedAt_2          *time.Time
 }
 
 func (q *Queries) ListGameMoveEventsWithTrace(ctx context.Context, gameUuid uuid.UUID) ([]ListGameMoveEventsWithTraceRow, error) {

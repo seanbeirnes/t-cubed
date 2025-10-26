@@ -158,7 +158,7 @@ func (h *Handler) PlayNNMove(c *gin.Context) {
 			Player2Piece:  result.Game.Player2Piece,
 			TerminalState: result.Game.TerminalState,
 		},
-		Trace: nil,
+		Trace:       nil,
 		RankedMoves: result.RankedMoves,
 	}
 
@@ -233,4 +233,44 @@ func (h *Handler) PlayMMMove(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+type ResMoveEvent struct {
+	MoveSequence  int16  `json:"move_sequence"`
+	PlayerID      int16  `json:"player_id"`
+	PostMoveState string `json:"post_move_state"`
+}
+
+type ResMoveEventWithTrace struct {
+	MoveEvent *ResMoveEvent        `json:"move_event"`
+	Trace     *service.NNMoveTrace `json:"trace"`
+}
+
+func (h *Handler) GetMoveHistory(c *gin.Context) {
+	uuidParam := c.Param("uuid")
+	uuid, err := uuid.Parse(uuidParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{})
+		return
+	}
+
+	moveEvents, err := h.gameService.GetMoveHistory(c.Request.Context(), uuid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	var resMoveEvents []ResMoveEventWithTrace
+	for _, moveEvent := range moveEvents {
+		resMoveEvents = append(resMoveEvents, ResMoveEventWithTrace{
+			MoveEvent: &ResMoveEvent{
+				MoveSequence:  moveEvent.MoveEvent.MoveSequence,
+				PlayerID:      moveEvent.MoveEvent.PlayerID,
+				PostMoveState: hex.EncodeToString(moveEvent.MoveEvent.PostMoveState),
+			},
+			Trace: moveEvent.Trace,
+		})
+	}
+	c.JSON(http.StatusOK, resMoveEvents)
 }
