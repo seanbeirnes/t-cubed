@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package tcubed.pb;
+
+option go_package = "/internal/pb;pb";
+
+// For the float64 activations from the neural network forward pass
+message Trace {
+  repeated double layer1 = 1; // 18 activations
+  repeated double layer2 = 2; // 32
+  repeated double layer3 = 3; // 32
+  repeated double layer4 = 4; // 32
+  repeated double layer5 = 5; // 9
+}

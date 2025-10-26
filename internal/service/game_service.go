@@ -3,15 +3,19 @@ package service
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"log/slog"
 
 	"t-cubed/internal/ai"
 	"t-cubed/internal/engine"
+	"t-cubed/internal/pb"
 	"t-cubed/internal/repository"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -21,9 +25,10 @@ const (
 )
 
 type GameService struct {
-	repo               *repository.Queries
-	neuralNet          *ai.Network
-	cachedGameTypesMap map[string]int32 // Label -> ID
+	repo                 *repository.Queries
+	neuralNet            *ai.Network
+	cachedGameTypesMap   map[string]int32      // Label -> ID
+	cachedTraceHachesMap map[string]uuid.UUID // Hash of pre+post game state  -> UUID
 }
 
 type Game = repository.Game
@@ -55,6 +60,7 @@ func NewGameService(db *pgxpool.Pool) *GameService {
 		repo:               repo,
 		neuralNet:          neuralNet,
 		cachedGameTypesMap: cachedGameTypesMap,
+		cachedTraceHachesMap: nil,
 	}
 }
 
@@ -75,6 +81,81 @@ func (s *GameService) GetGameTypeLabel(gameTypeID int32) string {
 	}
 	slog.Warn("Could not find game type label for ID", "game_type_id", gameTypeID)
 	return "unknown"
+}
+
+// Singleton pattern: Returns a map of the trace hashes to their UUIDs for caching
+func (s *GameService) getTraceHashesMap(ctx context.Context) map[string]uuid.UUID {
+	if s.cachedTraceHachesMap != nil {
+		return s.cachedTraceHachesMap
+	}
+
+	traceHashesMap := make(map[string]uuid.UUID)
+	traces, err := s.repo.GetTraceCaches(ctx)
+	if err != nil {
+		slog.Error("Could not get trace caches", "error", err)
+		return traceHashesMap
+	}
+	for _, trace := range traces {
+		traceHashesMap[hex.EncodeToString(trace.PrePostMoveStateHash)] = trace.Uuid
+	}
+	s.cachedTraceHachesMap = traceHashesMap
+	slog.Info("Loaded trace hashes cache", "size", len(traceHashesMap))
+	return traceHashesMap
+}
+
+func getCombinedStatesHash(preMoveState []byte, postMoveState []byte) []byte {
+	combinedStates := append(preMoveState, postMoveState...)
+	hash := sha256.Sum256(combinedStates)
+	return hash[:]
+}
+
+// Returns the UUID of the trace (if it exists) for the given pre-post move state hash
+func (s *GameService) GetTraceUUID(ctx context.Context, prePostMoveStateHash []byte) (*uuid.UUID, error) {
+	traceHashesMap := s.getTraceHashesMap(ctx)
+	uuid, ok := traceHashesMap[hex.EncodeToString(prePostMoveStateHash)]
+	if !ok {
+		return nil, errors.New("trace not found")
+	}
+	return &uuid, nil
+}
+
+// Adds a trace to the database (if needed), and returns the UUID of the trace
+func (s *GameService) AddTrace(ctx context.Context, preMoveState []byte, postMoveState []byte, trace *ai.ForwardTrace) (*uuid.UUID, error) {
+	combinedStatesHash := getCombinedStatesHash(preMoveState, postMoveState)
+	// Check if the trace already exists, and if so, return the UUID
+	traceUuid, err := s.GetTraceUUID(ctx, combinedStatesHash)
+	if err == nil {
+		slog.Warn("Trace already exists", "hash", hex.EncodeToString(combinedStatesHash))
+		return traceUuid, nil
+	}
+
+	traceProto := &pb.Trace{
+		Layer1: trace.LayerOutputs[0],
+		Layer2: trace.LayerOutputs[1],
+		Layer3: trace.LayerOutputs[2],
+		Layer4: trace.LayerOutputs[3],
+		Layer5: trace.LayerOutputs[4],
+	}
+	traceBytes, err := proto.Marshal(traceProto)
+	if err != nil {
+		slog.Error("Could not marshal trace proto", "error", err)
+		return nil, err
+	}
+
+	createTraceParams := repository.CreateTraceCacheParams{
+		PrePostMoveStateHash: combinedStatesHash,
+		Trace:                traceBytes,
+	}
+
+	traceCache, err := s.repo.CreateTraceCache(ctx, createTraceParams)
+	if err != nil {
+		slog.Error("Could not create trace cache", "error", err)
+		return nil, err
+	}
+
+	s.cachedTraceHachesMap[hex.EncodeToString(combinedStatesHash)] = traceCache.Uuid
+
+	return &traceCache.Uuid, nil
 }
 
 func (s *GameService) CreateGame(ctx context.Context, name string, gameTypeLabel string, player1Piece string, player2Piece string) (*Game, *MoveEvent, error) {
@@ -135,10 +216,6 @@ func (s *GameService) GetGame(ctx context.Context, uuid uuid.UUID) (*Game, *Move
 	}
 	game := &gameData.Game
 	moveEvent := &gameData.MoveEvent
-	 
-	if game != nil && moveEvent == nil {
-		return game, nil, nil
-	}
 
 	return game, moveEvent, nil
 }
@@ -242,11 +319,11 @@ func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID i
 	// If the game is over, return the game without a neural network trace
 	if gameState.IsTerminal() {
 		return &NNMoveResult{
-			Game:  game,
-			Trace: nil,
-		}, 
-		moveEvent, 
-		nil
+				Game:  game,
+				Trace: nil,
+			},
+			moveEvent,
+			nil
 	}
 
 	// Otherwise, play the AI (neural network) move and respond
@@ -300,6 +377,9 @@ func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID i
 		PostMoveState: gameState.GetBoardAsByteArray(),
 	}
 
+	// PostMoveState is the last move (pre-move) and gameState is the post-move state
+	s.AddTrace(ctx, moveEvent.PostMoveState, gameState.GetBoardAsByteArray(), trace)
+
 	*moveEvent, err = s.repo.CreateMoveEvent(ctx, createMoveEventParams)
 	if err != nil {
 		slog.Error("Could not create move event", "uuid", game.Uuid, "error", err)
@@ -307,12 +387,12 @@ func (s *GameService) PlayNNMove(ctx context.Context, uuid uuid.UUID, playerID i
 	}
 
 	return &NNMoveResult{
-		Game:        game,
-		Trace:       trace,
-		RankedMoves: positions,
-	},
-	moveEvent,
-	nil
+			Game:        game,
+			Trace:       trace,
+			RankedMoves: positions,
+		},
+		moveEvent,
+		nil
 }
 
 // Plays Minimax move

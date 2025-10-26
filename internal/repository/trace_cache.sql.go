@@ -70,3 +70,33 @@ func (q *Queries) GetTraceCacheByHash(ctx context.Context, prePostMoveStateHash 
 	)
 	return i, err
 }
+
+const getTraceCaches = `-- name: GetTraceCaches :many
+SELECT uuid, pre_post_move_state_hash, trace, created_at, updated_at FROM trace_cache
+`
+
+func (q *Queries) GetTraceCaches(ctx context.Context) ([]TraceCache, error) {
+	rows, err := q.db.Query(ctx, getTraceCaches)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TraceCache
+	for rows.Next() {
+		var i TraceCache
+		if err := rows.Scan(
+			&i.Uuid,
+			&i.PrePostMoveStateHash,
+			&i.Trace,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
