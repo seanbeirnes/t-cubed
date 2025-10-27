@@ -14,6 +14,7 @@ import { ErrorMessage } from "../../../shared/components";
 import { OVERRIDE_EXPANDED_STATE, type OverrideExpandedState } from "../../nn_animation_panel/types";
 import sleep from "../../../shared/utils/sleep";
 import MoveHistoryControls from "./MoveHistoryControls";
+import { outputsToRankedMoves } from "../utils";
 
 const ANIMATION_STEP_DELAY = 500;
 
@@ -269,11 +270,13 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
                     updatedNetwork[i].activations = layer
                 })
             }
+
             return {
                 ...state,
                 game: updatedGameState,
                 network: updatedNetwork,
                 trace: moveRecord.trace ? moveRecord.trace.layerOutputs : null,
+                rankedMoves: moveRecord.trace ? outputsToRankedMoves(moveRecord.trace.layerOutputs[4]) : null,
             }
 
         case EVENT_TYPES.ANIMATION_STEP:
