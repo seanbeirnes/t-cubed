@@ -6,13 +6,14 @@ import type { Game, MoveRecord } from "../../../shared/types";
 
 const buttonBaseStyles = [
     "w-full h-10 flex justify-center items-center",
-    "transition-all duration-100 ease-in-out",
+    "transition-all duration-200 ease-in-out",
     "border-slate-400/50",
 ].join(" ")
 
 const buttonSelectedStyles = [
     "bg-slate-300/50",
-    "text-slate-200",
+    "text-slate-50",
+    "text-shadow-slate-900/40 text-shadow-md",
     "cursor-not-allowed",
 ].join(" ")
 
@@ -26,6 +27,24 @@ const buttonEnabledStyles = [
 const buttonDisabledStyles = [
     "bg-slate-600",
     "text-slate-700/70",
+    "cursor-not-allowed"
+].join(" ")
+
+const buttonAIEnabledStyles = [
+    "bg-gradient-to-br from-amber-500/40 to-amber-200/60",
+    "text-white",
+    "hover:from-amber-400/50 hover:to-amber-100/70 active:from-fuchsia-300 active:to-cyan-300",
+    "ring-2 ring-amber-400",
+    "shadow-[0_0_14px_rgba(217,70,239,0.35)]",
+    "motion-safe:animate-pulse"
+].join(" ")
+
+const buttonAISelectedStyles = [
+    "bg-gradient-to-br from-amber-400/80 to-amber-100/90",
+    "ring-2 ring-amber-400",
+    "text-slate-50",
+    "text-shadow-slate-900/40 text-shadow-md",
+    "shadow-inner shadow-fuchsia-500/20",
     "cursor-not-allowed"
 ].join(" ")
 
@@ -102,12 +121,15 @@ export default function MoveHistoryControls({ game, onMoveSelected }: MoveHistor
                     <ChevronLeft />
                 </button>
                 {
-                    moveHistory.map((_, i) => <MoveButton
-                        key={`move-button-${i}`}
-                        index={i}
-                        selected={i === currentMoveIndex}
-                        onClick={() => handleMoveSelected(i, moveHistory)}
-                    />)
+                    moveHistory.map((mr, i) => (
+                        <MoveButton
+                            key={`move-button-${i}`}
+                            index={i}
+                            hasTrace={!!mr.trace}
+                            selected={i === currentMoveIndex}
+                            onClick={() => handleMoveSelected(i, moveHistory)}
+                        />
+                    ))
                 }
                 <button
                     name="go-to-next-move"
@@ -124,16 +146,24 @@ export default function MoveHistoryControls({ game, onMoveSelected }: MoveHistor
 
 interface MoveButtonProps {
     index: number;
+    hasTrace?: boolean;
     selected?: boolean;
     onClick: () => void;
 }
 
-function MoveButton({ index, selected, onClick }: MoveButtonProps) {
+function MoveButton({ index, hasTrace = false, selected, onClick }: MoveButtonProps) {
+    const classes = `${buttonBaseStyles} ${
+        selected
+            ? (hasTrace ? buttonAISelectedStyles : buttonSelectedStyles)
+            : (hasTrace ? buttonAIEnabledStyles : buttonEnabledStyles)
+    } ${hasTrace ? "border-0" : "border-l-1 border-r-1"}`;
+
     return (
         <button
-            className={`${buttonBaseStyles} ${selected ? buttonSelectedStyles : buttonEnabledStyles} border-l-1 border-r-1`}
+            className={classes}
             disabled={selected}
             onClick={onClick}
+            title={hasTrace ? "AI move" : "Human move"}
         >
             <span>{index + 1}</span>
         </button>
