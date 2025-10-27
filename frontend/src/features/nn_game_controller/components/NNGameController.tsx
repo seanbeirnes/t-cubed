@@ -4,7 +4,7 @@ import useEventQueue from "../hooks/useEventQueue";
 import retry from "../../../shared/utils/retry";
 import boardBitsFromHex from "../../../shared/utils/bitboard";
 
-import { type Game } from "../../../shared/types";
+import { type Game, type MoveRecord } from "../../../shared/types";
 import { NN_GAME_STATES, EVENT_TYPES, type NNGameState, type HoveredNeuron, type NNHoverState, type Event } from "../types";
 import type { Layer } from "../../../features/nn_animation_panel";
 
@@ -13,6 +13,8 @@ import { NNAnimationPanel } from "../../../features/nn_animation_panel";
 import { ErrorMessage } from "../../../shared/components";
 import { OVERRIDE_EXPANDED_STATE, type OverrideExpandedState } from "../../nn_animation_panel/types";
 import sleep from "../../../shared/utils/sleep";
+import MoveHistoryControls from "./MoveHistoryControls";
+import { outputsToRankedMoves } from "../utils";
 
 const ANIMATION_STEP_DELAY = 500;
 
@@ -254,6 +256,29 @@ function reducer(state: AgregatedState, action: Event): AgregatedState {
                 rankedMoves: state.rankedMoves,
             }
 
+        case EVENT_TYPES.SET_MOVE_HISTORY:
+            const moveRecord = action.payload as MoveRecord
+
+            // Update the board state
+            const updatedGameState = state.game
+            if (updatedGameState) {
+                updatedGameState.boardState = moveRecord.move_event.post_move_state
+            }
+            const updatedNetwork = state.network
+            if (moveRecord.trace) {
+                moveRecord.trace.layerOutputs.forEach((layer, i) => {
+                    updatedNetwork[i].activations = layer
+                })
+            }
+
+            return {
+                ...state,
+                game: updatedGameState,
+                network: updatedNetwork,
+                trace: moveRecord.trace ? moveRecord.trace.layerOutputs : null,
+                rankedMoves: moveRecord.trace ? outputsToRankedMoves(moveRecord.trace.layerOutputs[4]) : null,
+            }
+
         case EVENT_TYPES.ANIMATION_STEP:
             const step = action.payload.step;
             const prevGameState = state.game;
@@ -390,6 +415,10 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
                 shadow-inner`}>
                 {getGameStateMessage(state.state, state.game?.terminalState)}
             </p>
+            {state.state === NN_GAME_STATES.GAME_OVER && <MoveHistoryControls 
+                game={state.game} 
+                onMoveSelected={(moveRecord) => dispatch({ type: EVENT_TYPES.SET_MOVE_HISTORY, payload: moveRecord })}
+            />}
             <NNGameBoard
                 gameTitle={state.game?.name}
                 gameState={state.state}

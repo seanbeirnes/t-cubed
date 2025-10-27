@@ -16,8 +16,6 @@ type Game struct {
 	UpdatedAt     time.Time
 	Name          string
 	GameTypeID    int32
-	BoardState    []byte
-	NextPlayerID  int16
 	Player1Piece  string
 	Player2Piece  string
 	AiPlayerID    int16
@@ -29,4 +27,23 @@ type GameType struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Label     string
+}
+
+type MoveEvent struct {
+	Uuid          uuid.UUID
+	GameUuid      uuid.UUID
+	TraceUuid     *uuid.UUID
+	MoveSequence  int16
+	PlayerID      int16
+	PostMoveState []byte
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+type TraceCache struct {
+	Uuid                 uuid.UUID
+	PrePostMoveStateHash []byte
+	Trace                []byte
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
