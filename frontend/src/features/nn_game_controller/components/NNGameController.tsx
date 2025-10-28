@@ -4,7 +4,7 @@ import useEventQueue from "../hooks/useEventQueue";
 import retry from "../../../shared/utils/retry";
 import boardBitsFromHex from "../../../shared/utils/bitboard";
 
-import { type Game, type MoveRecord } from "../../../shared/types";
+import { type Game, type MoveRecord, type WeightsLayer } from "../../../shared/types";
 import { NN_GAME_STATES, EVENT_TYPES, type NNGameState, type HoveredNeuron, type NNHoverState, type Event } from "../types";
 import type { Layer } from "../../../features/nn_animation_panel";
 
@@ -69,6 +69,15 @@ function setInputLayerActivations(network: Layer[], bitBoard: number[]): void {
             bitBoardIndex--
         }
     })
+}
+
+async function fetchWeightsLayers(): Promise<WeightsLayer[]> {
+    const res = await fetch("/api/v1/data/nn/weights")
+    if (!res.ok) {
+        throw new Error('Failed to fetch weights')
+    }
+    const data = await res.json()
+    return data.layers as WeightsLayer[]
 }
 
 async function fetchGame(uuid: string): Promise<Game> {
@@ -331,6 +340,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
     const refLoading = useRef(false);
     const [hoveredCell, setHoveredCell] = useState<number | null>(null);
     const [hoveredNeuron, setHoveredNeuron] = useState<HoveredNeuron | null>(null);
+    const [weightsLayers, setWeightsLayers] = useState<WeightsLayer[]>([]);
     const [state, dispatch] = useReducer(reducer, { state: NN_GAME_STATES.LOADING, game: null, network: getEmptyNetwork(), trace: null, rankedMoves: null });
     const bitBoard = useMemo(() => boardBitsFromHex(state.game?.boardState || "00000000"), [state.game?.boardState]);
 
@@ -338,7 +348,10 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
         switch (event.type) {
             case EVENT_TYPES.LOAD_GAME:
                 try {
-                    const currGame = await retry(async () => await fetchGame(uuid));
+                    const currGameResponse: Promise<Game> = retry(async () => await fetchGame(uuid));
+                    const currWeightsLayersResponse: Promise<WeightsLayer[]> = retry(async () => await fetchWeightsLayers());
+                    const [currGame, currWeightsLayers] = await Promise.all([currGameResponse, currWeightsLayersResponse]);
+                    setWeightsLayers(currWeightsLayers);
                     dispatch({ type: EVENT_TYPES.LOAD_GAME, payload: { game: currGame } });
                 } catch (error) {
                     dispatch({ type: EVENT_TYPES.ERROR, payload: { error: error } });
@@ -437,7 +450,7 @@ export default function NNGameController({ uuid, animationPanelWidth }: NNGameCo
                     });
                 }}
             />
-            <NNAnimationPanel width={animationPanelWidth} network={state.network} overrideExpandedState={getOverrideExpandedState(state)} />
+            <NNAnimationPanel width={animationPanelWidth} weights={weightsLayers} network={state.network} overrideExpandedState={getOverrideExpandedState(state)} />
         </NNHoverStateContext.Provider>
     )
 }

@@ -2,7 +2,7 @@ import { useContext, useState } from "react";
 
 import type { Layer, LayerType, NeuronFill, OverrideExpandedState } from "../types";
 import type { HoveredNeuron } from "../../nn_game_controller";
-import type { AppState } from "../../../shared/types";
+import type { AppState, WeightsLayer } from "../../../shared/types";
 import { LAYER_TYPES, NEURON_FILLS, OVERRIDE_EXPANDED_STATE } from "../types";
 
 import { ChevronsUpDown, ChevronsDownUp, ArrowUp, ArrowDown } from "lucide-react";
@@ -20,6 +20,7 @@ const WINDOW_WIDTH_THRESHOLD: number = 768;
 
 interface NNAnimationPanelProps {
     width: number;
+    weights: WeightsLayer[];
     network: Layer[];
     overrideExpandedState?: OverrideExpandedState;
 }
@@ -143,7 +144,7 @@ function getLayerActivationMax(layer: Layer): number {
     return Math.max(...layer.activations);
 }
 
-export default function NNAnimationPanel({ width, network, overrideExpandedState = OVERRIDE_EXPANDED_STATE.NONE }: NNAnimationPanelProps) {
+export default function NNAnimationPanel({ width, weights, network, overrideExpandedState = OVERRIDE_EXPANDED_STATE.NONE }: NNAnimationPanelProps) {
     const appState: AppState = useContext(AppStateContext);
     const hoverState = useContext(NNHoverStateContext);
     const showNeuronText: boolean = appState.window.width > WINDOW_WIDTH_THRESHOLD;
