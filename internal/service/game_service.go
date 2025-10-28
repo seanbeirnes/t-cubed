@@ -5,8 +5,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"log/slog"
+	"os"
 
 	"t-cubed/internal/ai"
 	"t-cubed/internal/engine"
@@ -27,6 +29,7 @@ const (
 type GameService struct {
 	repo                 *repository.Queries
 	neuralNet            *ai.Network
+	weights              json.RawMessage
 	cachedGameTypesMap   map[string]int32     // Label -> ID
 	cachedTraceHachesMap map[string]uuid.UUID // Hash of pre+post game state  -> UUID
 }
@@ -43,6 +46,13 @@ type MoveEventWithTrace struct {
 
 func NewGameService(db *pgxpool.Pool) *GameService {
 	neuralNetWeightsFile := "data/weights.json"
+	weightBytes, err := os.ReadFile(neuralNetWeightsFile)
+	if err != nil {
+		slog.Error("Could not read neural network weights file", "error", err)
+		panic(1)
+	}
+	weights := json.RawMessage(weightBytes)
+
 	repo := repository.New(db)
 
 	ctx := context.Background()
@@ -64,9 +74,14 @@ func NewGameService(db *pgxpool.Pool) *GameService {
 	return &GameService{
 		repo:                 repo,
 		neuralNet:            neuralNet,
+		weights:              weights,
 		cachedGameTypesMap:   cachedGameTypesMap,
 		cachedTraceHachesMap: nil,
 	}
+}
+
+func (s *GameService) GetWeights() json.RawMessage {
+	return s.weights
 }
 
 // Returns a map of the game type labels to their IDs for caching

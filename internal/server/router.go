@@ -68,6 +68,7 @@ func applyRoutes(config *Config, engine *gin.Engine, handler *handler.Handler) {
 	// API
 	{
 		apiV1 := engine.Group("/api/v1")
+		apiV1.GET("/data/nn/weights", handler.GetWeights)
 		apiV1.POST("/game", handler.CreateGame)
 		apiV1.GET("/game/:uuid", handler.GetGame)
 		apiV1.POST("/game/:uuid/nn", handler.PlayNNMove)
