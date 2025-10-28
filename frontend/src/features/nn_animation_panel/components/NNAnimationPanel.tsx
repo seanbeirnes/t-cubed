@@ -1,8 +1,8 @@
-import { useContext, useState } from "react";
+import { useContext, useRef, useState } from "react";
 
 import type { Layer, LayerType, NeuronFill, OverrideExpandedState } from "../types";
 import type { HoveredNeuron } from "../../nn_game_controller";
-import type { AppState } from "../../../shared/types";
+import type { AppState, WeightsLayer } from "../../../shared/types";
 import { LAYER_TYPES, NEURON_FILLS, OVERRIDE_EXPANDED_STATE } from "../types";
 
 import { ChevronsUpDown, ChevronsDownUp, ArrowUp, ArrowDown } from "lucide-react";
@@ -11,6 +11,7 @@ import { AppStateContext } from "../../../App";
 import { NNHoverStateContext } from "../../nn_game_controller";
 import Neuron from "./Neuron";
 import Connection from "./Connection";
+import NeuronMathOverlay, { type OverlayData, type OverlayTerm } from "./NeuronMathOverlay";
 
 const PADDING: number = 2;
 const INNER_PADDING: number = 1;
@@ -20,6 +21,7 @@ const WINDOW_WIDTH_THRESHOLD: number = 768;
 
 interface NNAnimationPanelProps {
     width: number;
+    weights: WeightsLayer[];
     network: Layer[];
     overrideExpandedState?: OverrideExpandedState;
 }
@@ -143,7 +145,7 @@ function getLayerActivationMax(layer: Layer): number {
     return Math.max(...layer.activations);
 }
 
-export default function NNAnimationPanel({ width, network, overrideExpandedState = OVERRIDE_EXPANDED_STATE.NONE }: NNAnimationPanelProps) {
+export default function NNAnimationPanel({ width, weights, network, overrideExpandedState = OVERRIDE_EXPANDED_STATE.NONE }: NNAnimationPanelProps) {
     const appState: AppState = useContext(AppStateContext);
     const hoverState = useContext(NNHoverStateContext);
     const showNeuronText: boolean = appState.window.width > WINDOW_WIDTH_THRESHOLD;
@@ -154,11 +156,83 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
     const offsetClosed: number = -(config.totalLayers - 1) * (config.neuronWidth + config.layerSpacing);
     const [offset, setOffset]: [number, React.Dispatch<React.SetStateAction<number>>] = useState(offsetClosed);
     const [expanded, setExpanded] = useState(false);
+    const panelRef = useRef<HTMLDivElement | null>(null);
+    const [overlayVisible, setOverlayVisible] = useState(false);
+    const [overlayAnchor, setOverlayAnchor] = useState<{ x: number; y: number } | null>(null);
+    const [overlayData, setOverlayData] = useState<OverlayData | null>(null);
+    const fadeTimerRef = useRef<number | null>(null);
     const [expandedCount, setExpandedCount] = useState(0);
 
     const handleNeuronHover = (hoveredNeuron: HoveredNeuron | null) => {
+        if (appState.window.width < WINDOW_WIDTH_THRESHOLD) return; // don't show hover state on mobile
         if (hoverState.setHoveredNeuron === null) return;
         hoverState.setHoveredNeuron(hoveredNeuron);
+
+        // Floating math overlay
+        if (hoveredNeuron && expanded) {
+            const { layerIndex, neuronIndex } = hoveredNeuron;
+            // Skip input layer
+            if (layerIndex === 0) {
+                setOverlayVisible(false);
+                setOverlayData(null);
+                return;
+            }
+
+            const prevLayer: Layer = network[layerIndex - 1];
+            const currLayer: Layer = network[layerIndex];
+            const wLayer: WeightsLayer = weights[layerIndex - 1];
+            const hasData = prevLayer?.activations && currLayer?.activations && wLayer;
+            if (!hasData) {
+                setOverlayData(null);
+                setOverlayVisible(true); // show friendly message
+            } else {
+                const aPrev: number[] = prevLayer.activations ?? [];
+                const bias: number = wLayer.biases[neuronIndex] ?? 0;
+                // weights matrix is input x output: weights[i][j]
+                let z = bias;
+                const terms: OverlayTerm[] = [];
+                for (let i = 0; i < Math.min(aPrev.length, wLayer.weights.length); i++) {
+                    const w = wLayer.weights[i]?.[neuronIndex] ?? 0;
+                    const x = aPrev[i] ?? 0;
+                    const product = w * x;
+                    z += product;
+                    terms.push({ index: i, weight: w, input: x, product });
+                }
+                const isOutput = layerIndex === config.totalLayers - 1;
+                const activationName = isOutput ? "identity" : "ReLU";
+                const a = isOutput ? z : (z > 0 ? z : 0);
+                const topTerms = terms
+                    .slice()
+                    .sort((a, b) => Math.abs(b.product) - Math.abs(a.product))
+                    .slice(0, 8);
+                setOverlayData({ layerIndex, neuronIndex, bias, z, a, activationName, terms, topTerms });
+                setOverlayVisible(true);
+            }
+
+            // Position near neuron
+            const layer = network[layerIndex];
+            const neuronX = getNeuronX(neuronIndex, layer.size, config) * appState.window.vw;
+            const neuronY = getNeuronY(layerIndex, config) * appState.window.vw;
+            const rect = panelRef.current?.getBoundingClientRect();
+            // Anchor uses viewport coords for overlay flipping logic
+            const left = (rect?.left ?? 0) + neuronX + (2 * appState.window.vw); // nudge to circle edge
+            const top = (rect?.top ?? 0) + neuronY + (5 * appState.window.vw); // nudge to circle edge
+            setOverlayAnchor({ x: left, y: top });
+
+            // Cancel any pending fade-out
+            if (fadeTimerRef.current) {
+                window.clearTimeout(fadeTimerRef.current);
+                fadeTimerRef.current = null;
+            }
+        } else {
+            // start fade-out
+            if (fadeTimerRef.current) window.clearTimeout(fadeTimerRef.current);
+            fadeTimerRef.current = window.setTimeout(() => {
+                setOverlayVisible(false);
+                setOverlayData(null);
+                setOverlayAnchor(null);
+            }, 120);
+        }
     };
 
     const toggleExpanded = () => {
@@ -202,7 +276,7 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
     }
 
     return (
-        <div id="nn-animation-panel" style={
+        <div ref={panelRef} id="nn-animation-panel" style={
             {
                 width: `${config.width}vw`,
                 height: `${config.height + 4}vw`,
@@ -334,6 +408,7 @@ export default function NNAnimationPanel({ width, network, overrideExpandedState
                     })
                 }
             </svg>
+            <NeuronMathOverlay visible={overlayVisible && expanded} anchor={overlayAnchor} data={overlayData} />
             {/* This section is animated when the output layer is hovered over */}
             <div className={`group ${isHoveredNeuronInOutputLayer(hoverState.hoveredNeuron, config) ? "is-hovered opacity-75" : ""} transition-opacity duration-200 flex flex-row justify-center items-center gap-[1vw] text-amber-400 font-bold text-shadow-md text-shadow-amber-900`}>
                 <ArrowUp className="w-[2vw] h-[2vw] group-[.is-hovered]:animate-pulse" 

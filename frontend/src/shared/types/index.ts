@@ -4,3 +4,4 @@ export * from "./window";
 export * from "./game-token";
 export * from "./game";
 export * from "./move-record";
+export * from "./weights-layer";

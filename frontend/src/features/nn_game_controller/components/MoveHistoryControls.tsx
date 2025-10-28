@@ -33,7 +33,7 @@ const buttonDisabledStyles = [
 const buttonAIEnabledStyles = [
     "bg-gradient-to-br from-amber-500/40 to-amber-200/60",
     "text-white",
-    "hover:from-amber-400/50 hover:to-amber-100/70 active:from-fuchsia-300 active:to-cyan-300",
+    "hover:from-amber-400/50 hover:to-amber-100/70 active:from-amber-500/60 active:to-amber-200/80",
     "ring-2 ring-amber-400",
     "shadow-[0_0_14px_rgba(217,70,239,0.35)]",
     "motion-safe:animate-pulse"
