@@ -59,11 +59,11 @@ fi
 echo "Checking for .env files..."
 if [ ! -f .env ]; then
   echo "Creating .env file..."
-  cp .env.example .env
+  cp doc/.example.env .env
 fi
 if [ ! -f .env.db ]; then
   echo "Creating .env.db file..."
-  cp .env.db.example .env.db
+  cp doc/.example.env.db .env.db
 fi
 
 echo "Installing go dependencies..."
