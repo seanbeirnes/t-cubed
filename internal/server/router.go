@@ -21,7 +21,6 @@ func newRouter(config *Config) *gin.Engine {
 
 	engine := gin.Default()
 	engine.SetTrustedProxies(nil)
-	engine.TrustedPlatform = gin.PlatformFlyIO
 
 	handler := handler.NewHandler(config.DB)
 	applyRoutes(config, engine, handler)

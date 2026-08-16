@@ -1,31 +1,25 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"strconv"
-	"strings"
 
 	"t-cubed/internal/server"
 )
 
-const (
-	MSG_USAGE = "Usage: server --port <port>"
-)
+const defaultPort = 8080
 
 func main() {
-	// Get port from system arguments
-	if len(os.Args) != 3 || strings.ToLower(os.Args[1]) != "--port" {
-		fmt.Fprintln(os.Stderr, MSG_USAGE)
-		os.Exit(1)
-	}
-
-	port, err := strconv.Atoi(os.Args[2])
-	if err != nil || port < 1024 || port > 65535 {
-		fmt.Fprintln(os.Stderr, MSG_USAGE)
-		os.Exit(1)
+	port := defaultPort
+	if value, ok := os.LookupEnv("PORT"); ok {
+		parsedPort, err := strconv.Atoi(value)
+		if err != nil || !isValidPort(parsedPort) {
+			slog.Error("Invalid PORT", "value", value)
+			os.Exit(1)
+		}
+		port = parsedPort
 	}
 
 	// Set up logging
@@ -43,4 +37,16 @@ func main() {
 	slog.SetDefault(logger)
 
 	server.RunServer(port)
+}
+
+func isValidPort(port int) bool {
+	// A well-known port not used for HTTP/HTTPS was passed
+	if port < 1024 && port != 80 && port != 443 {
+		return false
+	}
+	// Outside valid range
+	if port > 65535 {
+		return false
+	}
+	return true
 }
